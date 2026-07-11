@@ -1,0 +1,16 @@
+# Optional but recommended guardrail. `buf lint` keeps the schema clean and
+# `buf breaking` blocks incompatible changes before they fan out to services.
+# If you don't want buf, delete this file and the lint/breaking jobs in ci.yml.
+version: v2
+modules:
+  - path: .
+lint:
+  use:
+    - STANDARD
+  except:
+    # Our packages are techscout.<svc>.v1 with flat files at repo root, so the
+    # file-path/package-dir match rule doesn't apply here.
+    - PACKAGE_DIRECTORY_MATCH
+breaking:
+  use:
+    - FILE

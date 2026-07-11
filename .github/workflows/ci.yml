@@ -1,0 +1,26 @@
+name: Proto CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: buf lint + breaking
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: bufbuild/buf-action@v1
+        with:
+          # Lint always; check breaking changes against the tip of main.
+          lint: true
+          format: false
+          breaking: true
+          breaking_against: "https://github.com/${{ github.repository }}.git#branch=main"

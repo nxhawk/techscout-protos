@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package techscout.product.v1;
+
+// go_package is only read by the Go consumer (product-service). With
+// `--go_opt=module=<module>` protoc writes stubs to api/proto/product/v1/,
+// so product-service's existing import paths stay unchanged. Python consumers
+// ignore this option.
+option go_package = "github.com/nxhawk/techscout-product-service/api/proto/product/v1;productv1";
+
+// Product catalog: search + CRUD. Served over gRPC to the gateway.
+service ProductService {
+  rpc Search (SearchRequest) returns (SearchResponse);
+  rpc Get    (GetRequest)    returns (Product);
+  rpc Create (CreateRequest) returns (Product);
+  rpc Update (UpdateRequest) returns (Product);
+  rpc Delete (DeleteRequest) returns (DeleteResponse);
+}
+
+message Product {
+  string id = 1;
+  string name = 2;
+  string brand = 3;
+  double price = 4;
+  map<string, string> specs = 5;
+}
+
+message SearchRequest {
+  string query = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+message SearchResponse {
+  repeated Product results = 1;
+  int32 total = 2;
+}
+message GetRequest { string id = 1; }
+message CreateRequest { Product product = 1; }
+message UpdateRequest { string id = 1; Product product = 2; }
+message DeleteRequest { string id = 1; }
+message DeleteResponse { bool ok = 1; }

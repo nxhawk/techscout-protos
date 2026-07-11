@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package techscout.docs.v1;
+
+// RAG over documentation, over gRPC. Consumed by the gateway.
+service DocsService {
+  rpc Query  (QueryRequest)  returns (QueryResponse);
+  rpc Ingest (IngestRequest) returns (IngestResponse);
+}
+
+message Source {
+  string source = 1;
+  string text = 2;
+  double score = 3;
+}
+
+message QueryRequest {
+  string query = 1;
+  int32 top_k = 2;
+}
+
+message QueryResponse {
+  string answer = 1;
+  repeated Source sources = 2;
+}
+
+message IngestRequest {
+  string path = 1;
+}
+
+message IngestResponse {
+  int32 documents = 1;
+  int32 chunks_indexed = 2;
+}
