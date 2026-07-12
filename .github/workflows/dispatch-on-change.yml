@@ -3,6 +3,11 @@ name: Dispatch proto-updated
 # When a .proto changes on main, notify only the services that consume it.
 # Requires a repo secret DISPATCH_TOKEN: a PAT (or GitHub App token) with
 # `contents: write` on the four consumer repos so repository_dispatch is allowed.
+#
+# The `paths: **/*.proto` filter below is what keeps documentation changes
+# from ever bumping a consumer service: a commit that only touches docs/**
+# doesn't match this filter, so this job never runs and no
+# repository_dispatch is sent. See docs/ci-flow.md for the full picture.
 
 on:
   push:

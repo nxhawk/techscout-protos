@@ -1,7 +1,7 @@
 name: Notify Discord
 
-# Bắn thông báo lên kênh chat team (Discord) mỗi khi có commit mới lên main.
-# Cần secret DISCORD_WEBHOOK = URL webhook của kênh Discord.
+# Post to the team Discord channel on every push to main.
+# Requires secret DISCORD_WEBHOOK = Discord channel webhook URL.
 on:
   push:
     branches: [main]
@@ -13,7 +13,7 @@ jobs:
   discord:
     runs-on: ubuntu-latest
     steps:
-      - name: Gửi thông báo Discord
+      - name: Send Discord notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           REPO: ${{ github.repository }}
@@ -26,12 +26,12 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${DISCORD_WEBHOOK:-}" ]; then
-            echo "::warning::DISCORD_WEBHOOK chưa được set — bỏ qua thông báo."
+            echo "::warning::DISCORD_WEBHOOK is not set — skipping notification."
             exit 0
           fi
           short="${SHA:0:7}"
           payload=$(jq -n \
-            --arg title  "🛰️ techscout-protos • commit mới" \
+            --arg title  "🛰️ techscout-protos • new commit" \
             --arg desc   "$MSG" \
             --arg url    "$URL" \
             --arg repo   "$REPO" \
@@ -48,13 +48,13 @@ jobs:
                 color: 3447003,
                 fields: [
                   { name: "Repo",   value: $repo,   inline: true },
-                  { name: "Nhánh",  value: $branch, inline: true },
+                  { name: "Branch", value: $branch, inline: true },
                   { name: "Commit", value: $short,  inline: true },
-                  { name: "Bởi",    value: $actor,  inline: true }
+                  { name: "Author", value: $actor,  inline: true }
                 ]
               } ],
-              content: ("🔔 Proto vừa cập nhật — " + $compare)
+              content: ("🔔 Proto updated — " + $compare)
             }')
           curl -sf -X POST -H "Content-Type: application/json" \
                -d "$payload" "$DISCORD_WEBHOOK"
-          echo "Đã gửi thông báo Discord cho commit $short."
+          echo "Discord notification sent for commit $short."

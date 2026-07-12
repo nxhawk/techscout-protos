@@ -1,10 +1,23 @@
 name: Proto CI
 
+# Scoped to proto-related paths only: editing docs/** (or the root README)
+# must never run buf lint/breaking. This keeps documentation changes fully
+# isolated from the proto contract guardrail — see docs/ci-flow.md.
 on:
   push:
     branches: [main]
+    paths:
+      - "**/*.proto"
+      - "buf.yaml"
+      - "buf.gen.yaml"
+      - ".github/workflows/ci.yml"
   pull_request:
     branches: [main]
+    paths:
+      - "**/*.proto"
+      - "buf.yaml"
+      - "buf.gen.yaml"
+      - ".github/workflows/ci.yml"
 
 permissions:
   contents: read
