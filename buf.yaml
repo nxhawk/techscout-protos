@@ -1,0 +1,24 @@
+# Cấu hình buf cho techscout-protos.
+#
+# LINT: dùng bộ STANDARD, loại 4 luật xung đột với thiết kế hiện tại:
+#   - DIRECTORY_SAME_PACKAGE / PACKAGE_DIRECTORY_MATCH
+#       3 package (product/recommend/docs) nằm phẳng trong 1 thư mục thay vì
+#       tách cây techscout/<svc>/v1/. Cố ý giữ vậy để path submodule + cờ -I
+#       của các service không đổi.
+#   - RPC_RESPONSE_STANDARD_NAME / RPC_REQUEST_RESPONSE_UNIQUE
+#       Get/Create/Update trả thẳng message Product (tái dùng) thay vì *Response.
+# Các luật còn lại của STANDARD vẫn áp dụng: PascalCase/snake_case, version
+# suffix (.v1), service suffix (Service), request naming (*Request),
+# no required fields, consistent file options, no import cycle, ...
+version: v1
+lint:
+  use:
+    - STANDARD
+  except:
+    - DIRECTORY_SAME_PACKAGE
+    - PACKAGE_DIRECTORY_MATCH
+    - RPC_RESPONSE_STANDARD_NAME
+    - RPC_REQUEST_RESPONSE_UNIQUE
+breaking:
+  use:
+    - FILE
