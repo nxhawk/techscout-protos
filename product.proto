@@ -1,3 +1,4 @@
+// product.proto
 syntax = "proto3";
 
 package techscout.product.v1;

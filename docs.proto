@@ -1,3 +1,4 @@
+// docs.proto
 syntax = "proto3";
 
 package techscout.docs.v1;

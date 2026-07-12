@@ -1,3 +1,4 @@
+// recommend.proto
 syntax = "proto3";
 
 package techscout.recommend.v1;
@@ -18,6 +19,10 @@ message RecommendRequest {
   string query = 1;
   int32 top_k = 2;
 }
+
+
+
+
 
 message CompareRequest {
   string query = 1;
