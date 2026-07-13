@@ -29,6 +29,7 @@ Một vài quy ước bắt buộc (do `buf lint` với ruleset `STANDARD` kiể
 - Service phải có hậu tố `Service` (`ProductService`, không phải `Product`).
 - Request message phải có hậu tố `Request` (`SearchRequest`).
 - Không dùng `required` (proto3 semantics).
+- Đường dẫn file phải khớp package: `techscout.product.v1` → `techscout/product/v1/product.proto` (rule `DIRECTORY_SAME_PACKAGE`/`PACKAGE_DIRECTORY_MATCH`, đang bật trong `buf.yaml`).
 
 ### 2. Lint + kiểm tra breaking local (bắt buộc trước khi push)
 
@@ -40,9 +41,8 @@ buf breaking --against '.git#branch=main'
 Nếu `buf breaking` báo lỗi, xem xét:
 
 - Có thể đổi thành thêm field mới thay vì sửa field cũ không?
-- Nếu thực sự cần breaking change, cân nhắc tạo **file/`package` version mới**
-  (`techscout.product.v2`) thay vì sửa `v1` — giữ `v1` chạy song song cho tới
-  khi mọi consumer migrate xong.
+- Nếu thực sự cần breaking change, tạo **version mới** (`v2`) — xem mục ngay
+  bên dưới — thay vì sửa `v1` tại chỗ.
 
 ### 3. Mở PR vào `main`
 
@@ -76,7 +76,7 @@ mới), ngoài việc viết proto, cần cập nhật thêm 2 chỗ:
      ["techscout/product/v1/product.proto"]="techscout-gateway techscout-product-service"
      ["techscout/recommend/v1/recommend.proto"]="techscout-gateway techscout-rag-recommend"
      ["techscout/docs/v1/docs.proto"]="techscout-gateway techscout-rag-docs"
-     ["inventory.proto"]="techscout-gateway techscout-inventory-service"  # thêm dòng này
+     ["techscout/inventory/v1/inventory.proto"]="techscout-gateway techscout-inventory-service"  # thêm dòng này
    )
    ```
 
@@ -86,6 +86,93 @@ mới), ngoài việc viết proto, cần cập nhật thêm 2 chỗ:
 Nếu quên bước 1, proto mới vẫn được lint/breaking-check bình thường, nhưng
 **sẽ không dispatch tới service nào** — service phải tự chạy `proto-sync.yml`
 bằng tay hoặc chờ `workflow_dispatch` với input `protos` chứa tên file mới.
+
+## Thêm version mới (v2) song song với v1
+
+Vì mỗi contract đã nằm ở `techscout/<svc>/v1/<svc>.proto` (thư mục riêng theo
+version), thêm `v2` **không đụng** tới `v1` đang chạy — hai version tồn tại
+song song, mỗi consumer tự chọn thời điểm migrate. Đây là cách được khuyến
+nghị mỗi khi cần một **breaking change** thật sự.
+
+### Các bước chi tiết
+
+**A. Phía `techscout-protos` (repo này)**
+
+1. Tạo thư mục `techscout/<svc>/v2/` và copy nội dung từ
+   `techscout/<svc>/v1/<svc>.proto` sang `techscout/<svc>/v2/<svc>.proto`.
+2. Đổi khai báo `package techscout.<svc>.v1;` → `package techscout.<svc>.v2;`.
+3. Áp breaking change / thiết kế lại field, RPC, message theo nhu cầu — file
+   `v1` **giữ nguyên, không sửa**.
+4. Nếu service viết bằng Go (như `product-service`), đổi `go_package` trong
+   file `v2` sang thư mục riêng, ví dụ:
+   `option go_package = ".../api/proto/product/v2;productv2";` (khác `v1` để
+   không ghi đè code sinh ra).
+5. Chạy `buf lint` — `buf breaking` **không** áp dụng cho file `v2` vì đây là
+   file hoàn toàn mới (không có gì ở `main` để so sánh), nhưng vẫn nên chạy để
+   chắc chắn không phá vỡ chính `v1` do nhầm lẫn khi copy.
+6. Thêm dòng cho `v2` vào bảng "Contract → consumers" trong `README.md`.
+7. Thêm entry mới vào `CONSUMERS` trong `dispatch-on-change.yml`, key là full
+   path:
+
+   ```bash
+   declare -A CONSUMERS=(
+     ["techscout/product/v1/product.proto"]="techscout-gateway techscout-product-service"
+     ["techscout/product/v2/product.proto"]="techscout-gateway techscout-product-service"  # thêm dòng này — danh sách có thể khác v1 nếu chỉ một phần consumer đã sẵn sàng
+     ...
+   )
+   ```
+
+8. Mở PR, merge vào `main` như quy trình bình thường ở trên.
+
+**B. Phía từng service tiêu thụ (tự chọn thời điểm, không bắt buộc đồng loạt)**
+
+1. Bump submodule (`git submodule update --remote --recursive proto` hoặc chờ
+   `proto-sync.yml` tự chạy) để có cả `v1` lẫn `v2` trong thư mục `proto/`.
+2. Sinh code cho `v2` **song song** `v1` (không xóa code sinh ra của `v1`):
+   - Python (gateway, rag-docs, rag-recommend): thêm target/`gen_proto.sh` trỏ
+     `proto/techscout/<svc>/v2/<svc>.proto`, output vào
+     `src/grpc_gen/techscout/<svc>/v2/`.
+   - Go (product-service): thêm target `proto-v2` trong `Makefile` trỏ
+     `api/proto/shared/techscout/product/v2/product.proto`, output vào
+     `api/proto/product/v2/`.
+3. Ở phía **server** (service implement contract): đăng ký cả hai version trên
+   cùng instance — ví dụ Go: gọi cả
+   `productv1.RegisterProductServiceServer(...)` và
+   `productv2.RegisterProductServiceServer(...)` trên cùng `grpc.Server`. Nhờ
+   vậy client cũ (`v1`) và client mới (`v2`) đều được phục vụ trong lúc chuyển
+   tiếp.
+4. Ở phía **client** (gateway gọi service khác): đổi import từ
+   `...techscout.<svc>.v1` sang `...techscout.<svc>.v2` khi sẵn sàng — có thể
+   làm từng service một, không cần đồng loạt.
+5. Chạy test/staging trên `v2` trước khi để traffic thật đi qua.
+
+**C. Dọn dẹp khi mọi consumer đã migrate xong**
+
+1. `grep` toàn bộ 4 repo service để chắc chắn không còn ai import
+   `techscout.<svc>.v1` / `techscout/<svc>/v1/` nữa.
+2. Xóa `techscout/<svc>/v1/` khỏi `techscout-protos`, gỡ entry `v1` khỏi
+   `CONSUMERS` trong `dispatch-on-change.yml` và khỏi bảng trong `README.md`.
+3. Ở từng service: gỡ code sinh ra cho `v1` (`src/grpc_gen/.../v1` hoặc
+   `api/proto/.../v1`), gỡ handler/registration cho `v1` ở phía server.
+
+### Checklist
+
+- [ ] Tạo `techscout/<svc>/v2/<svc>.proto`, đổi `package` sang `.v2`, giữ
+      nguyên file `v1`
+- [ ] (Go) Đổi `go_package` trong file `v2` sang thư mục `v2` riêng
+- [ ] `buf lint` pass cho file mới
+- [ ] Thêm dòng `v2` vào bảng "Contract → consumers" trong `README.md`
+- [ ] Thêm entry `v2` vào `CONSUMERS` trong `dispatch-on-change.yml`
+- [ ] Merge PR vào `main`
+- [ ] Mỗi service tự bump submodule, sinh code cho `v2` **song song** `v1`
+      (không xóa code `v1`)
+- [ ] Server: đăng ký/handle cả `v1` và `v2` cùng lúc trong giai đoạn chuyển
+      tiếp
+- [ ] Client (gateway): chuyển import sang `v2` từng service một, có test
+      trước khi đổi traffic thật
+- [ ] Sau khi xác nhận không còn consumer nào dùng `v1` (grep toàn repo): xóa
+      `techscout/<svc>/v1/` + entry liên quan trong `dispatch-on-change.yml`
+      và `README.md`, gỡ code sinh ra cho `v1` ở từng service
 
 ## Xóa một proto / một RPC không dùng nữa
 

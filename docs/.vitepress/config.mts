@@ -24,6 +24,7 @@ export default defineConfig({
       themeConfig: {
         nav: [
           { text: "Trang chủ", link: "/" },
+          { text: "Khái niệm gRPC", link: "/concepts" },
           { text: "Luồng CI", link: "/ci-flow" },
           { text: "Cập nhật proto", link: "/updating-protos" },
           { text: "Tham chiếu proto", link: "/proto-reference" },
@@ -34,6 +35,7 @@ export default defineConfig({
             text: "Bắt đầu",
             items: [
               { text: "Giới thiệu", link: "/" },
+              { text: "Khái niệm gRPC & Proto cơ bản", link: "/concepts" },
               { text: "Cài đặt & chạy local", link: "/setup" },
             ],
           },
