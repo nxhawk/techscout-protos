@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       protos:
-        description: "Space/newline-separated proto filenames to force-dispatch. Empty = all."
+        description: "Space/newline-separated proto paths (e.g. techscout/product/v1/product.proto) to force-dispatch. Empty = all."
         default: ""
 
 permissions:
@@ -45,12 +45,12 @@ jobs:
           set -euo pipefail
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             protos="${INPUT_PROTOS:-}"
-            [ -z "$protos" ] && protos="$(ls *.proto)"
+            [ -z "$protos" ] && protos="$(find techscout -name '*.proto' | sort)"
           elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            protos="$(ls *.proto)"
+            protos="$(find techscout -name '*.proto' | sort)"
           else
-            protos="$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" -- '*.proto' \
-                      | xargs -r -n1 basename | sort -u)"
+            protos="$(git diff --name-only --diff-filter=d "$BEFORE" "$SHA" -- 'techscout/**/*.proto' \
+                      | sort -u)"
           fi
           echo "Changed protos:"; echo "$protos"
           {
@@ -65,10 +65,13 @@ jobs:
           PROTOS: ${{ steps.changed.outputs.protos }}
         run: |
           set -euo pipefail
+          # Keyed by full path (not basename) so a future v2 file — e.g.
+          # techscout/product/v2/product.proto — can be mapped to a different
+          # consumer list than v1 without colliding on filename.
           declare -A CONSUMERS=(
-            ["product.proto"]="techscout-gateway techscout-product-service"
-            ["recommend.proto"]="techscout-gateway techscout-rag-recommend"
-            ["docs.proto"]="techscout-gateway techscout-rag-docs"
+            ["techscout/product/v1/product.proto"]="techscout-gateway techscout-product-service"
+            ["techscout/recommend/v1/recommend.proto"]="techscout-gateway techscout-rag-recommend"
+            ["techscout/docs/v1/docs.proto"]="techscout-gateway techscout-rag-docs"
           )
           repos=""
           while IFS= read -r p; do

@@ -1,22 +1,20 @@
 # buf config for techscout-protos.
 #
-# LINT: use STANDARD, except 4 rules that conflict with the current design:
-#   - DIRECTORY_SAME_PACKAGE / PACKAGE_DIRECTORY_MATCH
-#       Three packages (product/recommend/docs) live flat in one directory instead
-#       of techscout/<svc>/v1/ trees. Intentional — keeps submodule paths and -I
-#       flags unchanged across services.
+# Layout: each contract lives at techscout/<svc>/v1/<svc>.proto, matching its
+# `package techscout.<svc>.v1;` declaration 1:1. This is what lets a future
+# breaking change ship as techscout/<svc>/v2/<svc>.proto (package
+# techscout.<svc>.v2) side-by-side with v1 instead of overwriting it in place.
+#
+# LINT: use STANDARD, except 2 rules that conflict with the current design:
 #   - RPC_RESPONSE_STANDARD_NAME / RPC_REQUEST_RESPONSE_UNIQUE
 #       Get/Create/Update return the Product message directly (reuse) instead of *Response.
-# All other STANDARD rules still apply: PascalCase/snake_case, version suffix (.v1),
-# service suffix (Service), request naming (*Request), no required fields,
-# consistent file options, no import cycle, ...
+# All other STANDARD rules apply, including DIRECTORY_SAME_PACKAGE and
+# PACKAGE_DIRECTORY_MATCH now that the tree matches the package path.
 version: v1
 lint:
   use:
     - STANDARD
   except:
-    - DIRECTORY_SAME_PACKAGE
-    - PACKAGE_DIRECTORY_MATCH
     - RPC_RESPONSE_STANDARD_NAME
     - RPC_REQUEST_RESPONSE_UNIQUE
 breaking:

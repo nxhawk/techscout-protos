@@ -46,8 +46,8 @@ thích từng workflow, khi nào nó chạy, và toàn bộ chuỗi sự kiện 
 1. Checkout full history (`fetch-depth: 0` — cần thiết để `buf breaking` so sánh
    với `main`).
 2. Chạy `bufbuild/buf-action@v1` với:
-   - `lint: true` — áp cấu hình trong `buf.yaml` (`STANDARD` trừ 4 rule đã tắt vì
-     xung đột với layout phẳng 3 package + response tái dùng message `Product`).
+   - `lint: true` — áp cấu hình trong `buf.yaml` (`STANDARD` trừ 2 rule đã tắt vì
+     response tái dùng message `Product` thay vì trả về `*Response` riêng).
    - `breaking: true`, `breaking_against` trỏ tới
      `https://github.com/<repo>.git#branch=main` — chặn mọi thay đổi phá vỡ
      tương thích ngược (đổi field number, đổi type, xóa RPC đang dùng…) so với
@@ -71,16 +71,19 @@ tiêu thụ.
 **Việc nó làm (3 bước):**
 
 1. **Xác định proto nào đổi** (`Determine changed protos`) — dùng
-   `git diff --name-only --diff-filter=d "$BEFORE" "$SHA" -- '*.proto'`, hoặc lấy
-   toàn bộ `*.proto` nếu là push đầu tiên / chạy tay không truyền input.
+   `git diff --name-only --diff-filter=d "$BEFORE" "$SHA" -- 'techscout/**/*.proto'`,
+   hoặc lấy toàn bộ `techscout/**/*.proto` nếu là push đầu tiên / chạy tay
+   không truyền input.
 2. **Map proto → repo tiêu thụ** (`Map protos -> consumer repos`) — bảng cứng
-   trong workflow:
+   trong workflow, khóa theo **đường dẫn đầy đủ** (không phải basename) để một
+   `v2` trong tương lai có thể map sang danh sách consumer khác `v1` mà không
+   đụng nhau:
 
    | Proto | Repo nhận dispatch |
    | --- | --- |
-   | `product.proto` | `techscout-gateway`, `techscout-product-service` |
-   | `recommend.proto` | `techscout-gateway`, `techscout-rag-recommend` |
-   | `docs.proto` | `techscout-gateway`, `techscout-rag-docs` |
+   | `techscout/product/v1/product.proto` | `techscout-gateway`, `techscout-product-service` |
+   | `techscout/recommend/v1/recommend.proto` | `techscout-gateway`, `techscout-rag-recommend` |
+   | `techscout/docs/v1/docs.proto` | `techscout-gateway`, `techscout-rag-docs` |
 
    Nếu bạn thêm proto thứ 4, **phải cập nhật bảng `CONSUMERS` này** kèm bảng
    tương ứng trong `README.md`.
@@ -90,7 +93,7 @@ tiêu thụ.
    quyền gọi API repo khác).
 
 ::: tip Vì sao chỉ dispatch đúng consumer, không phải cả 4?
-Nếu bạn chỉ sửa `recommend.proto`, `techscout-rag-docs` và
+Nếu bạn chỉ sửa `techscout/recommend/v1/recommend.proto`, `techscout-rag-docs` và
 `techscout-product-service` sẽ **không** nhận dispatch — tránh build/deploy
 không cần thiết cho service không liên quan.
 :::

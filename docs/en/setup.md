@@ -18,12 +18,13 @@ is only needed if you want to run or build the documentation site (`docs/`).
 git clone https://github.com/nxhawk/techscout-protos.git
 cd techscout-protos
 ls
-# buf.yaml  docs.proto  product.proto  recommend.proto  docs/  README.md
+# buf.yaml  techscout/  docs/  README.md
 ```
 
-The three `.proto` files sit flat at the repo root (see the rationale in
-[`buf.yaml`](https://github.com/nxhawk/techscout-protos/blob/main/buf.yaml) — this
-is intentional, to keep submodule paths and `-I` flags stable across services).
+The three `.proto` files live under `techscout/<service>/v1/` (see the rationale
+in [`buf.yaml`](https://github.com/nxhawk/techscout-protos/blob/main/buf.yaml)) —
+each service gets its own version directory, so adding `v2` later never touches
+the `v1` that's already deployed.
 
 ## 3. Lint & breaking-change check locally
 
@@ -36,7 +37,7 @@ buf breaking --against '.git#branch=main'
 
 - `buf lint` — checks style: PascalCase/snake_case, `.v1` version suffix,
   `Service` suffix, `*Request` naming, no `required` fields, etc. (the `STANDARD`
-  ruleset minus the 4 rules disabled in `buf.yaml`).
+  ruleset minus the 2 rules disabled in `buf.yaml`).
 - `buf breaking` — compares against `main` to make sure you haven't renumbered a
   field, changed a type, removed a field/RPC still in use, etc. (anything that
   would break a consumer's backward compatibility).

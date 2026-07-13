@@ -46,9 +46,9 @@ will **not** trigger this job.
 1. Checks out full history (`fetch-depth: 0` — required so `buf breaking` can
    diff against `main`).
 2. Runs `bufbuild/buf-action@v1` with:
-   - `lint: true` — applies the config in `buf.yaml` (`STANDARD` minus the 4
-     rules disabled because they conflict with the flat 3-package layout and
-     the reuse of the `Product` message as a response).
+   - `lint: true` — applies the config in `buf.yaml` (`STANDARD` minus the 2
+     rules disabled because of the reuse of the `Product` message as a
+     response instead of a dedicated `*Response`).
    - `breaking: true`, `breaking_against` pointing at
      `https://github.com/<repo>.git#branch=main` — blocks any change that would
      break backward compatibility (renumbering a field, changing a type,
@@ -72,15 +72,18 @@ consumer services.
 **What it does (3 steps):**
 
 1. **Determine changed protos** — using
-   `git diff --name-only --diff-filter=d "$BEFORE" "$SHA" -- '*.proto'`, or all
-   `*.proto` files on the first push / a manual run with no input.
-2. **Map protos → consumer repos** — a hard-coded table in the workflow:
+   `git diff --name-only --diff-filter=d "$BEFORE" "$SHA" -- 'techscout/**/*.proto'`,
+   or all `techscout/**/*.proto` files on the first push / a manual run with
+   no input.
+2. **Map protos → consumer repos** — a hard-coded table in the workflow, keyed
+   by **full path** (not basename) so a future `v2` can map to a different
+   consumer list than `v1` without colliding on filename:
 
    | Proto | Repos that receive the dispatch |
    | --- | --- |
-   | `product.proto` | `techscout-gateway`, `techscout-product-service` |
-   | `recommend.proto` | `techscout-gateway`, `techscout-rag-recommend` |
-   | `docs.proto` | `techscout-gateway`, `techscout-rag-docs` |
+   | `techscout/product/v1/product.proto` | `techscout-gateway`, `techscout-product-service` |
+   | `techscout/recommend/v1/recommend.proto` | `techscout-gateway`, `techscout-rag-recommend` |
+   | `techscout/docs/v1/docs.proto` | `techscout-gateway`, `techscout-rag-docs` |
 
    If you add a 4th proto, **this `CONSUMERS` table must be updated**, along
    with the matching table in `README.md`.
@@ -90,7 +93,7 @@ consumer services.
    cannot call another repo's API).
 
 ::: tip Why only the right consumers, not all 4?
-If you only change `recommend.proto`, `techscout-rag-docs` and
+If you only change `techscout/recommend/v1/recommend.proto`, `techscout-rag-docs` and
 `techscout-product-service` will **not** receive a dispatch — avoiding
 unnecessary builds/deploys for unrelated services.
 :::

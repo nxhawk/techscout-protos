@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: 3 contract, 4 repo tiêu thụ
-    details: product.proto, recommend.proto, docs.proto — dùng chung bởi gateway, product-service, rag-recommend, rag-docs qua git submodule.
+    details: techscout/{product,recommend,docs}/v1/*.proto — dùng chung bởi gateway, product-service, rag-recommend, rag-docs qua git submodule.
   - title: buf lint + breaking change guard
     details: Mọi PR/push vào main đều được buf kiểm tra style và tính tương thích ngược trước khi phát tán.
   - title: Fan-out tự động theo file thay đổi

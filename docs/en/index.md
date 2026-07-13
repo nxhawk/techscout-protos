@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: 3 contracts, 4 consumer repos
-    details: product.proto, recommend.proto, docs.proto — shared by gateway, product-service, rag-recommend, rag-docs via git submodule.
+    details: techscout/{product,recommend,docs}/v1/*.proto — shared by gateway, product-service, rag-recommend, rag-docs via git submodule.
   - title: buf lint + breaking-change guard
     details: Every PR/push to main is checked by buf for style and backward compatibility before anything is fanned out.
   - title: Auto fan-out by changed file

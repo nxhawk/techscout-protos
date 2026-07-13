@@ -9,13 +9,13 @@ as a **client**; each backend service only consumes its own proto as the
 
 | Proto | Package | Backend service that implements it | Consumed by |
 | --- | --- | --- | --- |
-| `product.proto` | `techscout.product.v1` | `product-service` (Go) | `gateway` (client), `product-service` (server) |
-| `recommend.proto` | `techscout.recommend.v1` | `rag-recommend` | `gateway` (client), `rag-recommend` (server) |
-| `docs.proto` | `techscout.docs.v1` | `rag-docs` | `gateway` (client), `rag-docs` (server) |
+| `techscout/product/v1/product.proto` | `techscout.product.v1` | `product-service` (Go) | `gateway` (client), `product-service` (server) |
+| `techscout/recommend/v1/recommend.proto` | `techscout.recommend.v1` | `rag-recommend` | `gateway` (client), `rag-recommend` (server) |
+| `techscout/docs/v1/docs.proto` | `techscout.docs.v1` | `rag-docs` | `gateway` (client), `rag-docs` (server) |
 
 ---
 
-## `product.proto` — Product catalog
+## `techscout/product/v1/product.proto` — Product catalog
 
 **Package:** `techscout.product.v1`
 
@@ -70,7 +70,7 @@ message as the response instead of adding near-duplicate
 
 ---
 
-## `recommend.proto` — Product recommendation & comparison
+## `techscout/recommend/v1/recommend.proto` — Product recommendation & comparison
 
 **Package:** `techscout.recommend.v1`
 
@@ -105,7 +105,7 @@ compare products.
 
 ---
 
-## `docs.proto` — RAG over documentation
+## `techscout/docs/v1/docs.proto` — RAG over documentation
 
 **Package:** `techscout.docs.v1`
 
@@ -136,17 +136,18 @@ into the index.
 | `IngestResponse` | `documents` | `int32` | Number of documents processed |
 | | `chunks_indexed` | `int32` | Number of chunks added to the index |
 
-::: tip What `recommend.proto` and `docs.proto` have in common
+::: tip What `techscout/recommend/v1/recommend.proto` and `techscout/docs/v1/docs.proto` have in common
 Both follow the same RAG shape: `Request` has a `query` (+ `top_k` when
 limiting sources), `Response` has `answer` + `repeated Source`. If you add a
 new RAG service, reuse this shape for consistency.
 :::
 
-## Why do the 3 packages sit flat at the root instead of `techscout/<svc>/v1/`?
+## Why do the 3 packages sit under `techscout/<svc>/v1/`?
 
-See the comment in
-[`buf.yaml`](https://github.com/nxhawk/techscout-protos/blob/main/buf.yaml):
-this is an intentional choice to keep submodule paths and `protoc` `-I` flags
-unchanged across every service, at the cost of disabling 2 lint rules
-(`DIRECTORY_SAME_PACKAGE`, `PACKAGE_DIRECTORY_MATCH`) that would otherwise
-require the directory structure to match the package.
+Each contract lives at `techscout/<svc>/v1/<svc>.proto`, matching its
+`package techscout.<svc>.v1;` declaration 1:1 — satisfying the
+`DIRECTORY_SAME_PACKAGE` / `PACKAGE_DIRECTORY_MATCH` lint rules (both enabled
+in `buf.yaml`, no longer disabled). The main payoff: a future breaking change
+ships as `techscout/<svc>/v2/<svc>.proto` (package `techscout.<svc>.v2`)
+alongside `v1` instead of overwriting it — consumers migrate to `v2` on their
+own schedule while `v1` keeps working until nothing depends on it anymore.

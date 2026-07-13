@@ -9,11 +9,17 @@ submodule and never keep their own copy.
 
 ## Contract → consumers
 
-| Proto            | Package                  | Consumed by                          |
-| ---------------- | ------------------------ | ------------------------------------ |
-| `product.proto`  | `techscout.product.v1`   | gateway (client), product-service    |
-| `recommend.proto`| `techscout.recommend.v1` | gateway (client), rag-recommend      |
-| `docs.proto`     | `techscout.docs.v1`      | gateway (client), rag-docs           |
+| Proto                                  | Package                  | Consumed by                          |
+| --------------------------------------- | ------------------------ | ------------------------------------ |
+| `techscout/product/v1/product.proto`    | `techscout.product.v1`   | gateway (client), product-service    |
+| `techscout/recommend/v1/recommend.proto`| `techscout.recommend.v1` | gateway (client), rag-recommend      |
+| `techscout/docs/v1/docs.proto`          | `techscout.docs.v1`      | gateway (client), rag-docs           |
+
+Each contract lives under `techscout/<svc>/<version>/`, one directory per
+version. To ship a breaking change without touching existing consumers, add a
+new `techscout/<svc>/v2/<svc>.proto` (package `techscout.<svc>.v2`) alongside
+`v1` instead of editing it in place — consumers migrate to `v2` on their own
+schedule, and `v1` keeps working until every consumer has moved off it.
 
 ## What happens when you change a proto
 

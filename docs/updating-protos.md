@@ -19,7 +19,7 @@
 
 ```bash
 git checkout -b feat/product-add-category
-# sửa product.proto, recommend.proto hoặc docs.proto
+# sửa techscout/product/v1/product.proto, techscout/recommend/v1/recommend.proto hoặc techscout/docs/v1/docs.proto
 ```
 
 Một vài quy ước bắt buộc (do `buf lint` với ruleset `STANDARD` kiểm tra):
@@ -73,9 +73,9 @@ mới), ngoài việc viết proto, cần cập nhật thêm 2 chỗ:
 
    ```bash
    declare -A CONSUMERS=(
-     ["product.proto"]="techscout-gateway techscout-product-service"
-     ["recommend.proto"]="techscout-gateway techscout-rag-recommend"
-     ["docs.proto"]="techscout-gateway techscout-rag-docs"
+     ["techscout/product/v1/product.proto"]="techscout-gateway techscout-product-service"
+     ["techscout/recommend/v1/recommend.proto"]="techscout-gateway techscout-rag-recommend"
+     ["techscout/docs/v1/docs.proto"]="techscout-gateway techscout-rag-docs"
      ["inventory.proto"]="techscout-gateway techscout-inventory-service"  # thêm dòng này
    )
    ```

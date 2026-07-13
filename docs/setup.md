@@ -18,12 +18,13 @@ chạy hoặc build site tài liệu (`docs/`).
 git clone https://github.com/nxhawk/techscout-protos.git
 cd techscout-protos
 ls
-# buf.yaml  docs.proto  product.proto  recommend.proto  docs/  README.md
+# buf.yaml  techscout/  docs/  README.md
 ```
 
-Ba file `.proto` nằm phẳng ở thư mục gốc (xem giải thích trong
-[`buf.yaml`](https://github.com/nxhawk/techscout-protos/blob/main/buf.yaml) — đây là
-lựa chọn có chủ đích để giữ đường dẫn submodule/`-I` flag ổn định ở các service).
+Ba file `.proto` nằm dưới `techscout/<service>/v1/` (xem giải thích trong
+[`buf.yaml`](https://github.com/nxhawk/techscout-protos/blob/main/buf.yaml)) —
+mỗi service có thư mục version riêng, để thêm `v2` sau này không đụng tới `v1`
+đang chạy.
 
 ## 3. Lint & kiểm tra breaking change local
 
@@ -36,7 +37,7 @@ buf breaking --against '.git#branch=main'
 
 - `buf lint` — kiểm tra style: PascalCase/snake_case, hậu tố version `.v1`, hậu tố
   `Service`, tên `*Request`, không field `required`, v.v. (theo cấu hình `STANDARD`
-  trừ 4 rule đã tắt trong `buf.yaml`).
+  trừ 2 rule đã tắt trong `buf.yaml`).
 - `buf breaking` — so sánh với `main` để đảm bảo bạn không đổi số field, đổi kiểu,
   xóa field/RPC đang được dùng… (những thay đổi phá vỡ khả năng tương thích ngược
   của consumer).
