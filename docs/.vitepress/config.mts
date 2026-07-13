@@ -73,6 +73,7 @@ export default defineConfig({
       themeConfig: {
         nav: [
           { text: "Home", link: "/en/" },
+          { text: "gRPC Concepts", link: "/en/concepts" },
           { text: "CI Flow", link: "/en/ci-flow" },
           { text: "Updating Protos", link: "/en/updating-protos" },
           { text: "Proto Reference", link: "/en/proto-reference" },
@@ -83,6 +84,7 @@ export default defineConfig({
             text: "Getting started",
             items: [
               { text: "Introduction", link: "/en/" },
+              { text: "gRPC & Proto concepts", link: "/en/concepts" },
               { text: "Setup & local dev", link: "/en/setup" },
             ],
           },

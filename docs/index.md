@@ -15,6 +15,9 @@ hero:
     - theme: alt
       text: Tham chiếu proto
       link: /proto-reference
+    - theme: alt
+      text: Khái niệm gRPC
+      link: /concepts
 
 features:
   - title: 3 contract, 4 repo tiêu thụ
@@ -36,6 +39,7 @@ bản sao proto của riêng mình — chúng gắn repo này làm **git submodu
 
 Nếu bạn cần:
 
+- Mới bắt đầu, chưa quen gRPC/protobuf? → xem [Khái niệm gRPC & Proto cơ bản](/concepts)
 - Hiểu **luồng CI/CD** hoạt động ra sao khi một proto thay đổi → xem [Luồng CI/CD](/ci-flow)
 - Biết **các bước** để sửa/thêm một proto một cách an toàn → xem [Cập nhật proto](/updating-protos)
 - Tra cứu **ý nghĩa** của từng service/message trong 3 file proto → xem [Tham chiếu proto](/proto-reference)

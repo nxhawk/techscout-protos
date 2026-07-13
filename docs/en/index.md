@@ -15,6 +15,9 @@ hero:
     - theme: alt
       text: Proto reference
       link: /en/proto-reference
+    - theme: alt
+      text: gRPC concepts
+      link: /en/concepts
 
 features:
   - title: 3 contracts, 4 consumer repos
@@ -36,6 +39,7 @@ submodule** and generate gRPC stubs from it.
 
 If you need to:
 
+- New to gRPC/protobuf? → see [gRPC & Proto concepts](/en/concepts)
 - Understand how the **CI/CD flow** reacts when a proto changes → see [CI/CD flow](/en/ci-flow)
 - Learn the **steps** to safely edit/add a proto → see [Updating a proto](/en/updating-protos)
 - Look up what each **service/message** in the 3 proto files means → see [Proto reference](/en/proto-reference)
