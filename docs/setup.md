@@ -1,5 +1,9 @@
 # Cài đặt & chạy local
 
+## Tổng quan
+
+Hướng dẫn cài công cụ, clone repo, chạy kiểm tra lint/breaking ở local, dùng proto làm submodule, chạy trang tài liệu ở local, và các secret cần cho CI.
+
 ## 1. Yêu cầu
 
 | Công cụ | Dùng để | Cài đặt |

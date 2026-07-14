@@ -1,5 +1,9 @@
 # Setup & local development
 
+## Overview
+
+How to set up the toolchain, clone the repo, run the local lint/breaking checks, consume the protos as a submodule, run the docs site locally, and the secrets CI needs.
+
 ## 1. Requirements
 
 | Tool | Used for | Install |

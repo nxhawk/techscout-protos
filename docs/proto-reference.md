@@ -1,5 +1,9 @@
 # Ý nghĩa từng proto
 
+## Tổng quan
+
+Tài liệu tham chiếu chi tiết cho 3 file `.proto` của repo — package, service, RPC và message của từng file, kèm service nào triển khai và tiêu thụ mỗi proto.
+
 Repo có 3 file `.proto`, mỗi file là một "bounded context" độc lập, mỗi package
 có version suffix `.v1`. Cả 3 đều được `gateway` tiêu thụ dưới vai trò **client**;
 mỗi service backend chỉ tiêu thụ đúng proto của mình dưới vai trò **server**.

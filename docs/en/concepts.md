@@ -1,5 +1,9 @@
 # gRPC & Proto Concepts
 
+## Overview
+
+Introduces the core gRPC and Protocol Buffers concepts used across `techscout-protos` and its 4 consumer repos, and explains why the platform chose gRPC over plain HTTP/REST.
+
 This page is for anyone touching `techscout-protos` for the first time: it
 explains each term (gRPC, stub, channel, protobuf, service, message, rpc,
 version, `buf breaking`, `buf lint`...), the actual `gen_proto`/`grpc_gen`/

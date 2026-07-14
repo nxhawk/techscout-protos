@@ -1,5 +1,9 @@
 # Luồng CI/CD chi tiết
 
+## Tổng quan
+
+Giải thích từng workflow CI/CD trong `techscout-protos` và các repo tiêu thụ, khi nào mỗi workflow chạy, và cách một thay đổi `.proto` lan truyền tới lúc service được deploy.
+
 `techscout-protos` có 4 workflow trong repo này, cộng thêm 2 workflow ở **mỗi**
 repo tiêu thụ (gateway, product-service, rag-recommend, rag-docs). Trang này giải
 thích từng workflow, khi nào nó chạy, và toàn bộ chuỗi sự kiện từ lúc bạn sửa một

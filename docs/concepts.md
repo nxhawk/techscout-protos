@@ -1,5 +1,9 @@
 # Khái niệm gRPC & Proto cơ bản
 
+## Tổng quan
+
+Giới thiệu các khái niệm gRPC và Protocol Buffers cốt lõi dùng trong `techscout-protos` cùng 4 repo tiêu thụ, và giải thích vì sao platform chọn gRPC thay vì HTTP/REST thuần.
+
 Trang này dành cho người mới đụng vào `techscout-protos` lần đầu: giải thích
 từng thuật ngữ (gRPC, stub, channel, protobuf, service, message, rpc,
 version, `buf breaking`, `buf lint`...), script `gen_proto`/`grpc_gen`/

@@ -1,5 +1,9 @@
 # CI/CD flow in detail
 
+## Overview
+
+Walks through every CI/CD workflow in `techscout-protos` and its consumer repos, explaining when each one runs and how a `.proto` edit propagates all the way to a deployed service.
+
 `techscout-protos` has 4 workflows in this repo, plus 2 more workflows in
 **each** consumer repo (gateway, product-service, rag-recommend, rag-docs). This
 page walks through every workflow, when it runs, and the full chain of events

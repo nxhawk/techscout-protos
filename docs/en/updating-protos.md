@@ -1,5 +1,9 @@
 # Updating-a-proto workflow
 
+## Overview
+
+The workflow for changing a `.proto` — classifying breaking vs non-breaking edits, the edit→lint→PR→merge steps, and how to add a new proto, ship a `v2`, or remove an unused proto/RPC.
+
 ## Core rule
 
 > **Only edit `.proto` files here.** Never edit the submodule copy directly

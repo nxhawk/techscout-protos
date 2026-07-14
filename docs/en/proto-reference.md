@@ -1,11 +1,15 @@
 # What each proto means
 
+## Overview
+
+A field-level reference for the repo's 3 `.proto` files — their packages, services, RPCs, and messages, plus which service implements and consumes each.
+
 The repo has 3 `.proto` files, each an independent bounded context, each
 package carrying a `.v1` version suffix. All three are consumed by `gateway`
 as a **client**; each backend service only consumes its own proto as the
 **server**.
 
-## Overview
+## Overview table
 
 | Proto | Package | Backend service that implements it | Consumed by |
 | --- | --- | --- | --- |

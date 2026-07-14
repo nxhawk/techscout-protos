@@ -1,5 +1,9 @@
 # Quy trình cập nhật một proto
 
+## Tổng quan
+
+Quy trình thay đổi một file `.proto` — phân loại thay đổi phá vỡ/không phá vỡ, các bước sửa→lint→PR→merge, cùng cách thêm proto mới, ra `v2`, hoặc xóa proto/RPC không dùng.
+
 ## Nguyên tắc cốt lõi
 
 > **Chỉ sửa `.proto` ở đây.** Không bao giờ sửa trực tiếp file trong thư mục
