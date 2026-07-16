@@ -3,48 +3,48 @@ layout: home
 
 hero:
   name: techscout-protos
-  text: Hợp đồng gRPC dùng chung
-  tagline: Nguồn sự thật duy nhất (single source of truth) cho các contract gRPC của nền tảng TechScout.
+  text: Shared gRPC contracts
+  tagline: Single source of truth for the gRPC contracts of the TechScout platform.
   actions:
     - theme: brand
-      text: Luồng CI/CD
+      text: CI/CD flow
       link: /ci-flow
     - theme: alt
-      text: Cập nhật một proto
+      text: Updating a proto
       link: /updating-protos
     - theme: alt
-      text: Tham chiếu proto
+      text: Proto reference
       link: /proto-reference
     - theme: alt
-      text: Khái niệm gRPC
+      text: gRPC concepts
       link: /concepts
 
 features:
-  - title: 3 contract, 4 repo tiêu thụ
-    details: techscout/{product,recommend,docs}/v1/*.proto — dùng chung bởi gateway, product-service, rag-recommend, rag-docs qua git submodule.
-  - title: buf lint + breaking change guard
-    details: Mọi PR/push vào main đều được buf kiểm tra style và tính tương thích ngược trước khi phát tán.
-  - title: Fan-out tự động theo file thay đổi
-    details: Chỉ những service thực sự tiêu thụ file .proto vừa đổi mới nhận repository_dispatch để đồng bộ — không cần bump toàn bộ.
-  - title: Docs không đụng vào service
-    details: Thay đổi trong thư mục docs/ chỉ build & deploy trang GitHub Pages này, không kích hoạt buf lint hay dispatch sang service nào.
+  - title: 3 contracts, 4 consumer repos
+    details: techscout/{product,recommend,docs}/v1/*.proto — shared by gateway, product-service, rag-recommend, rag-docs via git submodule.
+  - title: buf lint + breaking-change guard
+    details: Every PR/push to main is checked by buf for style and backward compatibility before anything is fanned out.
+  - title: Auto fan-out by changed file
+    details: Only the services that actually consume the changed .proto file receive a repository_dispatch to sync — no blanket bump.
+  - title: Docs never touch a service
+    details: Changes under docs/ only build & deploy this GitHub Pages site — they never trigger buf lint or a dispatch to any service.
 ---
 
-## Repo này dùng để làm gì?
+## What is this repo?
 
-`techscout-protos` là nơi **duy nhất** định nghĩa các `.proto` cho toàn bộ hệ thống
-TechScout. Các service (gateway, product-service, rag-recommend, rag-docs) không giữ
-bản sao proto của riêng mình — chúng gắn repo này làm **git submodule** và sinh mã
-(gRPC stub) từ đó.
+`techscout-protos` is the **single place** where every `.proto` for the TechScout
+platform is defined. Services (gateway, product-service, rag-recommend, rag-docs)
+do not keep their own copy of the protos — they attach this repo as a **git
+submodule** and generate gRPC stubs from it.
 
-Nếu bạn cần:
+If you need to:
 
-- Mới bắt đầu, chưa quen gRPC/protobuf? → xem [Khái niệm gRPC & Proto cơ bản](/concepts)
-- Hiểu **luồng CI/CD** hoạt động ra sao khi một proto thay đổi → xem [Luồng CI/CD](/ci-flow)
-- Biết **các bước** để sửa/thêm một proto một cách an toàn → xem [Cập nhật proto](/updating-protos)
-- Tra cứu **ý nghĩa** của từng service/message trong 3 file proto → xem [Tham chiếu proto](/proto-reference)
-- **Cài đặt** môi trường local (buf, protoc, submodule, chạy docs) → xem [Cài đặt](/setup)
+- New to gRPC/protobuf? → see [gRPC & Proto concepts](/concepts)
+- Understand how the **CI/CD flow** reacts when a proto changes → see [CI/CD flow](/ci-flow)
+- Learn the **steps** to safely edit/add a proto → see [Updating a proto](/updating-protos)
+- Look up what each **service/message** in the 3 proto files means → see [Proto reference](/proto-reference)
+- **Set up** your local environment (buf, protoc, submodule, running the docs) → see [Setup](/setup)
 
-::: tip Ngôn ngữ
-Trang này có bản [English](/en/) — dùng nút chọn ngôn ngữ ở góc trên bên phải.
+::: tip Language
+This site also has a [Vietnamese](/vi/) version — use the language switcher in the top-right corner.
 :::

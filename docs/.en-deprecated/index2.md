@@ -8,16 +8,16 @@ hero:
   actions:
     - theme: brand
       text: CI/CD flow
-      link: /en/ci-flow
+      link: /ci-flow
     - theme: alt
       text: Updating a proto
-      link: /en/updating-protos
+      link: /updating-protos
     - theme: alt
       text: Proto reference
-      link: /en/proto-reference
+      link: /proto-reference
     - theme: alt
       text: gRPC concepts
-      link: /en/concepts
+      link: /concepts
 
 features:
   - title: 3 contracts, 4 consumer repos
@@ -39,12 +39,12 @@ submodule** and generate gRPC stubs from it.
 
 If you need to:
 
-- New to gRPC/protobuf? → see [gRPC & Proto concepts](/en/concepts)
-- Understand how the **CI/CD flow** reacts when a proto changes → see [CI/CD flow](/en/ci-flow)
-- Learn the **steps** to safely edit/add a proto → see [Updating a proto](/en/updating-protos)
-- Look up what each **service/message** in the 3 proto files means → see [Proto reference](/en/proto-reference)
-- **Set up** your local environment (buf, protoc, submodule, running the docs) → see [Setup](/en/setup)
+- New to gRPC/protobuf? → see [gRPC & Proto concepts](/concepts)
+- Understand how the **CI/CD flow** reacts when a proto changes → see [CI/CD flow](/ci-flow)
+- Learn the **steps** to safely edit/add a proto → see [Updating a proto](/updating-protos)
+- Look up what each **service/message** in the 3 proto files means → see [Proto reference](/proto-reference)
+- **Set up** your local environment (buf, protoc, submodule, running the docs) → see [Setup](/setup)
 
 ::: tip Language
-This site also has a [Vietnamese](/) version — use the language switcher in the top-right corner.
+This site also has a [Vietnamese](/vi/) version — use the language switcher in the top-right corner.
 :::

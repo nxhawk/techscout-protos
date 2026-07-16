@@ -1,22 +1,22 @@
-# Cài đặt & chạy local
+# Setup & local development
 
-## Tổng quan
+## Overview
 
-Hướng dẫn cài công cụ, clone repo, chạy kiểm tra lint/breaking ở local, dùng proto làm submodule, chạy trang tài liệu ở local, và các secret cần cho CI.
+How to set up the toolchain, clone the repo, run the local lint/breaking checks, consume the protos as a submodule, run the docs site locally, and the secrets CI needs.
 
-## 1. Yêu cầu
+## 1. Requirements
 
-| Công cụ | Dùng để | Cài đặt |
+| Tool | Used for | Install |
 | --- | --- | --- |
-| [`buf`](https://buf.build/docs/installation) | Lint + kiểm tra breaking change cho `.proto` | `brew install bufbuild/buf/buf` hoặc tải binary từ GitHub Releases |
-| `git` ≥ 2.30 | Submodule, `merge-base` | — |
-| Node.js ≥ 18 | Chạy site docs (VitePress) | `nvm install 20` |
-| `protoc` + plugin ngôn ngữ (tùy service) | Sinh stub gRPC khi làm việc trong repo service | xem README của từng service tiêu thụ |
+| [`buf`](https://buf.build/docs/installation) | Lint + breaking-change check for `.proto` files | `brew install bufbuild/buf/buf` or download a binary from GitHub Releases |
+| `git` ≥ 2.30 | Submodules, `merge-base` | — |
+| Node.js ≥ 18 | Running the docs site (VitePress) | `nvm install 20` |
+| `protoc` + language plugin (per service) | Generating gRPC stubs when working inside a consumer repo | see each consumer service's README |
 
-Repo này **không** cần Node/Python để làm việc với proto — Node chỉ cần khi bạn muốn
-chạy hoặc build site tài liệu (`docs/`).
+This repo does **not** need Node/Python to work with the protos themselves — Node
+is only needed if you want to run or build the documentation site (`docs/`).
 
-## 2. Clone & cấu trúc repo
+## 2. Clone & repo layout
 
 ```bash
 git clone https://github.com/nxhawk/techscout-protos.git
@@ -25,46 +25,47 @@ ls
 # buf.yaml  techscout/  docs/  README.md
 ```
 
-Ba file `.proto` nằm dưới `techscout/<service>/v1/` (xem giải thích trong
-[`buf.yaml`](https://github.com/nxhawk/techscout-protos/blob/main/buf.yaml)) —
-mỗi service có thư mục version riêng, để thêm `v2` sau này không đụng tới `v1`
-đang chạy.
+The three `.proto` files live under `techscout/<service>/v1/` (see the rationale
+in [`buf.yaml`](https://github.com/nxhawk/techscout-protos/blob/main/buf.yaml)) —
+each service gets its own version directory, so adding `v2` later never touches
+the `v1` that's already deployed.
 
-## 3. Lint & kiểm tra breaking change local
+## 3. Lint & breaking-change check locally
 
-Chạy đúng những gì CI chạy, trước khi push:
+Run exactly what CI runs, before you push:
 
 ```bash
 buf lint
 buf breaking --against '.git#branch=main'
 ```
 
-- `buf lint` — kiểm tra style: PascalCase/snake_case, hậu tố version `.v1`, hậu tố
-  `Service`, tên `*Request`, không field `required`, v.v. (theo cấu hình `STANDARD`
-  trừ 2 rule đã tắt trong `buf.yaml`).
-- `buf breaking` — so sánh với `main` để đảm bảo bạn không đổi số field, đổi kiểu,
-  xóa field/RPC đang được dùng… (những thay đổi phá vỡ khả năng tương thích ngược
-  của consumer).
+- `buf lint` — checks style: PascalCase/snake_case, `.v1` version suffix,
+  `Service` suffix, `*Request` naming, no `required` fields, etc. (the `STANDARD`
+  ruleset minus the 2 rules disabled in `buf.yaml`).
+- `buf breaking` — compares against `main` to make sure you haven't renumbered a
+  field, changed a type, removed a field/RPC still in use, etc. (anything that
+  would break a consumer's backward compatibility).
 
-## 4. Dùng repo này trong một service (submodule)
+## 4. Consuming this repo from a service (submodule)
 
-Các service tiêu thụ gắn repo này làm submodule, ví dụ tại `services/gateway/proto`:
+Consumer services attach this repo as a submodule, e.g. at
+`services/gateway/proto`:
 
 ```bash
 git submodule add https://github.com/nxhawk/techscout-protos.git proto
 git submodule update --init --recursive
 ```
 
-Cập nhật thủ công lên bản mới nhất trên `main` (bình thường việc này do
-`proto-sync.yml` của từng service tự làm khi nhận `repository_dispatch`):
+Manually bumping to the latest `main` (normally done automatically by each
+service's `proto-sync.yml` on `repository_dispatch`):
 
 ```bash
 git submodule update --remote --recursive proto
 ```
 
-## 5. Chạy trang tài liệu này ở local
+## 5. Running this docs site locally
 
-Trang tài liệu (VitePress) nằm trong `docs/`:
+The documentation site (VitePress) lives under `docs/`:
 
 ```bash
 cd docs
@@ -72,25 +73,25 @@ npm install
 npm run docs:dev       # http://localhost:5173/techscout-protos/
 ```
 
-Build tĩnh (giống hệt bước CI chạy trước khi deploy lên GitHub Pages):
+Static build (identical to what CI runs before deploying to GitHub Pages):
 
 ```bash
-npm run docs:build     # xuất ra docs/.vitepress/dist
-npm run docs:preview   # xem thử bản build
+npm run docs:build     # outputs to docs/.vitepress/dist
+npm run docs:preview   # preview the build
 ```
 
 ::: warning
-`base` trong `docs/.vitepress/config.mts` được set cứng thành `/techscout-protos/`
-để khớp với GitHub Pages project site. Nếu bạn đổi tên repo, nhớ cập nhật `base`
-theo.
+`base` in `docs/.vitepress/config.mts` is hard-coded to `/techscout-protos/` to
+match the GitHub Pages project site. If you ever rename the repo, update `base`
+accordingly.
 :::
 
-## 6. Secret cần thiết cho CI
+## 6. Secrets required by CI
 
-| Secret | Repo | Mục đích |
+| Secret | Repo | Purpose |
 | --- | --- | --- |
-| `DISPATCH_TOKEN` | `techscout-protos` | PAT (fine-grained, `contents: write` trên 4 repo tiêu thụ) hoặc GitHub App token, dùng để gửi `repository_dispatch` sang các repo consumer. `GITHUB_TOKEN` mặc định **không** có quyền dispatch sang repo khác. |
-| `DISCORD_WEBHOOK` | `techscout-protos` | (tùy chọn) URL webhook Discord để thông báo mỗi khi có commit lên `main`. |
+| `DISPATCH_TOKEN` | `techscout-protos` | A fine-grained PAT (`contents: write` on the 4 consumer repos) or GitHub App token, used to send `repository_dispatch` to consumer repos. The default `GITHUB_TOKEN` **cannot** dispatch to other repositories. |
+| `DISCORD_WEBHOOK` | `techscout-protos` | (optional) Discord webhook URL to notify the team on every push to `main`. |
 
-Việc deploy trang docs này lên GitHub Pages **không cần secret bổ sung** — nó dùng
-`GITHUB_TOKEN` mặc định qua `actions/deploy-pages`.
+Deploying this docs site to GitHub Pages needs **no extra secret** — it uses the
+default `GITHUB_TOKEN` via `actions/deploy-pages`.

@@ -1,57 +1,59 @@
-# Khái niệm gRPC & Proto cơ bản
+# gRPC & Proto Concepts
 
-## Tổng quan
+## Overview
 
-Giới thiệu các khái niệm gRPC và Protocol Buffers cốt lõi dùng trong `techscout-protos` cùng 4 repo tiêu thụ, và giải thích vì sao platform chọn gRPC thay vì HTTP/REST thuần.
+Introduces the core gRPC and Protocol Buffers concepts used across `techscout-protos` and its 4 consumer repos, and explains why the platform chose gRPC over plain HTTP/REST.
 
-Trang này dành cho người mới đụng vào `techscout-protos` lần đầu: giải thích
-từng thuật ngữ (gRPC, stub, channel, protobuf, service, message, rpc,
-version, `buf breaking`, `buf lint`...), script `gen_proto`/`grpc_gen`/
-`grpc_server` thực tế trong 4 repo tiêu thụ, luồng hoạt động + phụ thuộc giữa
-các khái niệm, và **vì sao** platform chọn gRPC thay vì HTTP/REST thuần —
-luôn kèm liên hệ với HTTP cho ai quen REST hơn.
+This page is for anyone touching `techscout-protos` for the first time: it
+explains each term (gRPC, stub, channel, protobuf, service, message, rpc,
+version, `buf breaking`, `buf lint`...), the actual `gen_proto`/`grpc_gen`/
+`grpc_server` scripts across the 4 consumer repos, the end-to-end flow and
+dependency between these concepts, and **why** the platform picked gRPC over
+plain HTTP/REST — always tied back to an HTTP analogy for readers who know
+REST better.
 
-Các mục được sắp theo đúng thứ tự bạn cần hiểu: định nghĩa hợp đồng
-(`.proto`, `message`, `service`/`rpc`) → cách hợp đồng được kiểm tra
-(`buf lint`/`buf breaking`) → sinh code từ hợp đồng (`gen_proto.sh`,
-`grpc_gen`) → phía server implement (`grpc_server`) → phía client gọi ra
-(`stub`, `channel`) → vòng đời version → quy trình cập nhật đầy đủ → sơ đồ
-tổng kết → lý do chọn gRPC.
+Sections follow the order you actually need to learn them in: defining the
+contract (`.proto`, `message`, `service`/`rpc`) → how the contract gets
+checked (`buf lint`/`buf breaking`) → generating code from it
+(`gen_proto.sh`, `grpc_gen`) → the server implementing it (`grpc_server`) →
+the client calling it (`stub`, `channel`) → the version lifecycle → the full
+update process → a summary diagram → why gRPC was chosen.
 
-::: tip Khác gì với các trang còn lại?
-Trang này giải thích **khái niệm**. Muốn xem **quy trình** sửa proto → xem
-[Cập nhật proto](/updating-protos). Muốn xem **workflow CI** chạy gì → xem
-[Luồng CI/CD](/ci-flow). Muốn tra **từng RPC/message** → xem
-[Tham chiếu proto](/proto-reference).
+::: tip How is this different from the other pages?
+This page explains **concepts**. For the **process** of editing a proto →
+see [Updating a proto](/updating-protos). For the **CI workflows** that
+run → see [CI/CD flow](/ci-flow). To look up **each RPC/message** → see
+[Proto reference](/proto-reference).
 :::
 
-## 1. So sánh nhanh: gRPC vs HTTP/REST
+## 1. Quick cross-reference: gRPC vs HTTP/REST
 
-Bảng này dùng làm "từ điển tra chéo" — mỗi khái niệm gRPC bên dưới đều được
-đối chiếu lại với dòng tương ứng ở đây.
+Use this table as a lookup — every gRPC concept below is tied back to the
+matching row here.
 
-| | HTTP/REST (kiểu quen thuộc) | gRPC (dùng trong repo này) |
+| | HTTP/REST (the familiar style) | gRPC (used in this repo) |
 | --- | --- | --- |
-| Giao thức nền | HTTP/1.1 (thường) | HTTP/2 (bắt buộc) |
-| Định dạng dữ liệu | JSON (text, người đọc được) | Protobuf (binary, nhỏ & nhanh hơn, không đọc trực tiếp được) |
-| Hợp đồng API | Tùy chọn — OpenAPI/Swagger viết thêm, dễ lệch với code | Bắt buộc — file `.proto` **là** hợp đồng, sinh code trực tiếp từ đó |
-| Gọi 1 hàm ở xa | Tự ghép URL + method (`GET /products/{id}`), tự parse JSON response | Gọi `stub.Get(request)` như gọi hàm local — code sinh sẵn lo hết |
-| Kết nối | Thường 1 request/response, có thể có keep-alive/pool | 1 `channel` giữ kết nối lâu dài, multiplex nhiều RPC đồng thời trên cùng kết nối |
-| Sinh code client | Cần công cụ ngoài (openapi-generator...) hoặc viết tay | Tự động từ `.proto` bằng `protoc`/`buf`, đồng bộ cho mọi ngôn ngữ |
-| Kiểm tra tương thích ngược | Không có công cụ chuẩn, thường phát hiện ở runtime | `buf breaking` chặn ngay trong CI, trước khi merge |
-| Ai dùng trong platform này | Gateway ⇄ trình duyệt/FE (public edge) | Gateway ⇄ product-service / rag-recommend / rag-docs (nội bộ) |
+| Underlying protocol | HTTP/1.1 (typically) | HTTP/2 (required) |
+| Data format | JSON (text, human-readable) | Protobuf (binary, smaller & faster, not directly readable) |
+| API contract | Optional — OpenAPI/Swagger written separately, easy to drift from code | Mandatory — the `.proto` file **is** the contract, code is generated straight from it |
+| Calling a remote function | Manually build a URL + method (`GET /products/{id}`), manually parse the JSON response | Call `stub.Get(request)` like a local function — generated code handles the rest |
+| Connection | Usually one request/response, maybe keep-alive/pooling | One `channel` held open, multiplexing many RPCs over the same connection |
+| Client codegen | Needs an external tool (openapi-generator...) or hand-written code | Automatic from `.proto` via `protoc`/`buf`, consistent across every language |
+| Backward-compat checking | No standard tooling, usually discovered at runtime | `buf breaking` blocks it right in CI, before merge |
+| Who uses which here | Gateway ⇄ browser/frontend (public edge) | Gateway ⇄ product-service / rag-recommend / rag-docs (internal) |
 
-Ghi nhớ dòng cuối: **gRPC ở đây là giao tiếp nội bộ giữa các service**, không
-phải API public cho trình duyệt — trình duyệt vẫn gọi gateway qua HTTP/REST
-như bình thường, gateway mới là bên "dịch" HTTP → gRPC khi gọi xuống backend.
+Remember the last row: **gRPC here is internal service-to-service
+communication**, not a public API for the browser — the browser still calls
+the gateway over HTTP/REST as usual; the gateway is the one that "translates"
+HTTP ⇄ gRPC when calling down to a backend.
 
-## 2. Protocol Buffers (protobuf) là gì?
+## 2. What is Protocol Buffers (protobuf)?
 
-Protobuf là ngôn ngữ định nghĩa dữ liệu (giống JSON Schema) **kèm** một cách
-mã hóa nhị phân rất gọn để truyền dữ liệu đó qua mạng. File `.proto` vừa là
-tài liệu, vừa là input để sinh code — khác JSON, nơi bạn tự định nghĩa
-"shape" dữ liệu bằng tay (docstring, TypeScript type, Pydantic model...) và
-không có gì đảm bảo client/server khớp nhau.
+Protobuf is a data-definition language (like JSON Schema) **plus** a very
+compact binary encoding for sending that data over the network. A `.proto`
+file is both documentation and the input for code generation — unlike JSON,
+where you define the data "shape" by hand (docstrings, a TypeScript type, a
+Pydantic model...) with nothing guaranteeing the client and server agree.
 
 ```protobuf
 // techscout/product/v1/product.proto
@@ -64,25 +66,25 @@ message Product {
 }
 ```
 
-So với JSON `{"id": "...", "name": "...", "price": 12.5}`: cấu trúc giống
-hệt, nhưng mỗi field có thêm **số field** (`= 1`, `= 2`...) — đây là điểm
-khác biệt quan trọng nhất so với JSON, xem mục tiếp theo.
+Compared to JSON `{"id": "...", "name": "...", "price": 12.5}`: the shape is
+identical, but every field also has a **field number** (`= 1`, `= 2`...) —
+the single most important difference from JSON, covered next.
 
-## 3. `message` — đơn vị dữ liệu (tương đương JSON object / DTO)
+## 3. `message` — a unit of data (the JSON object / DTO equivalent)
 
-`message` giống một object JSON có schema cố định, hoặc một DTO/struct có
-kiểu. Khác biệt cốt lõi: field trong protobuf được định danh bằng **số**
-(`= 1`, `= 2`...), không phải tên chuỗi như JSON. Số này được ghi vào dữ liệu
-nhị phân khi encode — đổi số field, đổi kiểu field, hoặc xóa field đang dùng
-đều làm binary cũ/mới không tương thích, đó là lý do `buf breaking` xem những
-thay đổi này là breaking (xem mục 5).
+A `message` is like a JSON object with a fixed schema, or a typed DTO/struct.
+The core difference: protobuf fields are identified by **number**
+(`= 1`, `= 2`...), not by string name like JSON. That number is what gets
+written into the binary encoding — changing a field's number, changing its
+type, or removing a field still in use all make old and new binaries
+incompatible, which is exactly what `buf breaking` flags (see section 5).
 
-## 4. `service` + `rpc` — hợp đồng "API" (tương đương router + endpoint)
+## 4. `service` + `rpc` — the "API" contract (router + endpoint equivalent)
 
-`service` giống một router/controller nhóm các "endpoint" lại; mỗi `rpc` bên
-trong giống một phương thức/hàm — nhưng thay vì `GET /products/{id}`, bạn
-định nghĩa nó như một **lời gọi hàm có kiểu**: nhận vào 1 message, trả về 1
-message.
+A `service` is like a router/controller grouping "endpoints" together; each
+`rpc` inside it is like a method/function — but instead of
+`GET /products/{id}`, you define it as a **typed function call**: takes one
+message in, returns one message.
 
 ```protobuf
 // techscout/product/v1/product.proto
@@ -95,75 +97,80 @@ service ProductService {
 }
 ```
 
-Ba `service` trong repo này (`ProductService`, `RecommendService`,
-`DocsService`) — chi tiết từng RPC/message xem
-[Tham chiếu proto](/proto-reference). Cả 3 hiện đều dùng **unary RPC**
-(1 request → 1 response, giống hệt REST request/response) — gRPC còn hỗ trợ
-streaming (client/server/bidirectional) nhưng platform này chưa cần tới.
+The three services in this repo (`ProductService`, `RecommendService`,
+`DocsService`) — full RPC/message details in
+[Proto reference](/proto-reference). All three currently use **unary
+RPCs** (one request → one response, exactly like a REST request/response) —
+gRPC also supports streaming (client/server/bidirectional) but the platform
+doesn't need it yet.
 
-## 5. `buf lint` vs `buf breaking` — hai "vệ sĩ" khác việc nhau
+## 5. `buf lint` vs `buf breaking` — two different guards
 
-Ngay khi `.proto` (message + service + rpc) được sửa, hai công cụ này là thứ
-đầu tiên chạy trên PR — trước cả khi có chuyện sinh code (mục 6):
+The moment a `.proto` (message + service + rpc) changes, these two tools are
+the first thing that runs on a PR — before code generation even happens
+(section 6):
 
 | | `buf lint` | `buf breaking` |
 | --- | --- | --- |
-| Kiểm tra gì | **Style** — đặt tên, hậu tố, vị trí file... | **Tương thích ngược** — so với version trước |
-| So sánh với gì | Không so sánh, chỉ soi chính file hiện tại | So với `main` (`--against '.git#branch=main'`) |
-| Ví dụ lỗi bắt được | `service Product` thiếu hậu tố `Service`, field đặt `camelCase` thay vì `snake_case` | Đổi số field, đổi kiểu field, xóa RPC đang dùng |
-| Cấu hình trong repo | `buf.yaml` → `lint.use: STANDARD`, trừ 2 rule tắt (xem [Tham chiếu proto](/proto-reference)) | `buf.yaml` → `breaking.use: FILE` |
-| Chạy khi nào | Mọi PR/push proto | Mọi PR/push proto |
+| Checks | **Style** — naming, suffixes, file placement... | **Backward compatibility** — against the previous version |
+| Compared against | Nothing, just inspects the current file | `main` (`--against '.git#branch=main'`) |
+| Example caught error | `service Product` missing the `Service` suffix, a field named in `camelCase` instead of `snake_case` | Changing a field number, changing a field's type, removing an RPC still in use |
+| Config in repo | `buf.yaml` → `lint.use: STANDARD`, minus 2 disabled rules (see [Proto reference](/proto-reference)) | `buf.yaml` → `breaking.use: FILE` |
+| Runs when | Every proto PR/push | Every proto PR/push |
 
 ```bash
 buf lint
 buf breaking --against '.git#branch=main'
 ```
 
-Hai lệnh này là **đúng những gì `ci.yml` chạy** — chạy local trước khi push
-để không phải chờ CI báo lỗi.
+These two commands are **exactly what `ci.yml` runs** — run them locally
+before pushing instead of waiting for CI to report the failure.
 
-## 6. Script `gen_proto.sh` / `make proto` — cầu nối `.proto` → code
+## 6. `gen_proto.sh` / `make proto` — the bridge from `.proto` to code
 
-Qua được `buf lint`/`buf breaking` rồi, bước tiếp theo là biến `.proto`
-thành code thật cho từng ngôn ngữ:
+Once a proto passes `buf lint`/`buf breaking`, the next step is turning it
+into real code for each language:
 
-| Service | Ngôn ngữ | Lệnh | Input | Output |
+| Service | Language | Command | Input | Output |
 | --- | --- | --- | --- | --- |
-| `gateway` | Python | `bash scripts/gen_proto.sh` | **cả 3** file `.proto` (là client của cả 3 service) | `src/grpc_gen/techscout/{product,recommend,docs}/v1/` |
-| `product-service` | Go | `make proto` (trong `Makefile`) | `techscout/product/v1/product.proto` | `api/proto/product/v1/` |
-| `rag-recommend` | Python | `bash scripts/gen_proto.sh` | chỉ `recommend.proto` (server của riêng service này) | `src/grpc_gen/techscout/recommend/v1/` |
-| `rag-docs` | Python | `bash scripts/gen_proto.sh` | chỉ `docs.proto` | `src/grpc_gen/techscout/docs/v1/` |
+| `gateway` | Python | `bash scripts/gen_proto.sh` | **all 3** `.proto` files (client of all 3 services) | `src/grpc_gen/techscout/{product,recommend,docs}/v1/` |
+| `product-service` | Go | `make proto` (in `Makefile`) | `techscout/product/v1/product.proto` | `api/proto/product/v1/` |
+| `rag-recommend` | Python | `bash scripts/gen_proto.sh` | only `recommend.proto` (this service's own server contract) | `src/grpc_gen/techscout/recommend/v1/` |
+| `rag-docs` | Python | `bash scripts/gen_proto.sh` | only `docs.proto` | `src/grpc_gen/techscout/docs/v1/` |
 
-Cả 3 script Python gọi chung một lệnh nền tảng:
+All three Python scripts call the same underlying command:
 
 ```bash
 uv run python -m grpc_tools.protoc -I proto \
   --python_out="$OUT" --grpc_python_out="$OUT" "${PROTOS[@]}"
 ```
 
-`gateway` quét đệ quy toàn bộ `proto/techscout/**/*.proto` (vì nó là client
-gọi cả 3 backend); `rag-docs`/`rag-recommend` chỉ định danh đúng 1 file (vì
-mỗi service chỉ implement server cho đúng proto của mình). Go dùng `protoc`
-trực tiếp với 2 plugin `--go_out`/`--go-grpc_out` thay vì `grpc_tools`.
+`gateway` recursively scans all `proto/techscout/**/*.proto` (since it's a
+client for all 3 backends); `rag-docs`/`rag-recommend` name exactly one file
+(since each service only implements the server for its own proto). Go calls
+`protoc` directly with the `--go_out`/`--go-grpc_out` plugins instead of
+`grpc_tools`.
 
-::: tip Ai chạy script này, khi nào?
-- **Dev chạy tay** khi cần test cục bộ sau khi tự bump submodule.
-- **CI chạy hộ** trong `proto-sync.yml` của từng repo mỗi khi nhận
-  `repository_dispatch` — output được **commit thẳng vào git**, vì
-  Dockerfile của service dùng stub đã có sẵn, không chạy codegen lúc build
-  image. Đây là lý do `proto-sync.yml` cần `PROTO_BOT_TOKEN` để push (xem
-  [Luồng CI/CD](/ci-flow#3-phía-consumer-proto-guardyml-proto-syncyml)).
+::: tip Who runs this script, and when?
+- **A dev, by hand**, when testing locally after bumping the submodule
+  themselves.
+- **CI, on your behalf**, inside each repo's `proto-sync.yml` whenever it
+  receives a `repository_dispatch` — the output is **committed straight to
+  git**, because the service's Dockerfile ships the already-committed stubs
+  and never runs codegen at image build time. This is why `proto-sync.yml`
+  needs `PROTO_BOT_TOKEN` to push (see
+  [CI/CD flow](/ci-flow#3-on-the-consumer-side-proto-guardyml-proto-syncyml)).
 :::
 
-## 7. `grpc_gen` — thư mục code sinh ra, đừng sửa tay
+## 7. `grpc_gen` — the generated code folder, never hand-edit it
 
-`grpc_gen/` (Python) hoặc `api/proto/<svc>/v1/` (Go) là **kết quả** của
-script ở mục 6, gồm 2 loại file:
+`grpc_gen/` (Python) or `api/proto/<svc>/v1/` (Go) is the **output** of the
+script from section 6, containing two kinds of files:
 
-| File | Chứa gì | Ai dùng |
+| File | Contains | Used by |
 | --- | --- | --- |
-| `*_pb2.py` / `*.pb.go` | Class cho từng `message` (vd. `Product`, `SearchRequest`) | Cả client lẫn server |
-| `*_pb2_grpc.py` / `*_grpc.pb.go` | Class `...Stub` (cho client) **và** class `...Servicer`/interface (cho server implement) | Client dùng `Stub`, server implement `Servicer` |
+| `*_pb2.py` / `*.pb.go` | A class per `message` (e.g. `Product`, `SearchRequest`) | Both client and server |
+| `*_pb2_grpc.py` / `*_grpc.pb.go` | The `...Stub` class (for the client) **and** the `...Servicer`/interface (for the server to implement) | Client uses `Stub`, server implements `Servicer` |
 
 ```
 services/gateway/src/grpc_gen/techscout/product/v1/
@@ -172,27 +179,28 @@ services/gateway/src/grpc_gen/techscout/product/v1/
 └── __init__.py
 ```
 
-Toàn bộ thư mục này **do máy sinh ra**, luôn có comment
-`"""Generated gRPC stubs (do not edit; run scripts/gen_proto.sh)."""` — sửa
-tay sẽ mất khi chạy lại script. Muốn đổi gì, sửa `.proto` rồi chạy lại
-script sinh code (mục 6).
+The entire folder is **machine-generated**, always carrying the comment
+`"""Generated gRPC stubs (do not edit; run scripts/gen_proto.sh)."""` — hand
+edits are lost the next time the script runs. To change anything, edit the
+`.proto` and re-run the codegen script (section 6).
 
-## 8. `grpc_server` — nơi backend implement hợp đồng
+## 8. `grpc_server` — where the backend implements the contract
 
-`grpc_server` là nơi service **đóng vai trò server**: implement class
-`...Servicer` được sinh sẵn ở mục 7 (mỗi RPC trong `.proto` ứng với 1 method
-cần override), rồi đăng ký nó vào một `grpc.Server` lắng nghe trên 1 cổng
-TCP. Tương tự viết route handler Flask/Express, nhưng thay vì gắn theo URL
-bạn override theo tên RPC — gRPC framework tự lo routing + (de)serialize.
+`grpc_server` is where a service plays the **server** role: it implements
+the generated `...Servicer` class from section 7 (each RPC in the `.proto`
+maps to one method to override), then registers it on a `grpc.Server`
+listening on a TCP port. Similar to writing a Flask/Express route handler,
+but instead of binding by URL you override by RPC name — the gRPC framework
+handles routing and (de)serialization for you.
 
 ```python
-# services/rag-docs/src/grpc_server/service.py — implement hợp đồng
+# services/rag-docs/src/grpc_server/service.py — implementing the contract
 class DocsServicer(docs_pb2_grpc.DocsServiceServicer):
     def Query(self, request, context):
         ...
         return docs_pb2.QueryResponse(answer=answer, sources=sources)
 
-# services/rag-docs/src/grpc_server/server.py — đăng ký + chạy server
+# services/rag-docs/src/grpc_server/server.py — registering + running
 def build_server(port: int) -> grpc.Server:
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     docs_pb2_grpc.add_DocsServiceServicer_to_server(DocsServicer(), server)
@@ -200,7 +208,7 @@ def build_server(port: int) -> grpc.Server:
     return server
 ```
 
-Phía Go (`product-service`) làm tương tự, chỉ khác cú pháp:
+Go (`product-service`) does the same thing with different syntax:
 
 ```go
 // services/product-service/cmd/server/grpc_enabled.go
@@ -210,28 +218,30 @@ reflection.Register(s)
 s.Serve(lis)
 ```
 
-`rag-recommend` có cấu trúc `src/grpc_server/` y hệt `rag-docs`.
-`product-service` không có thư mục `grpc_server` riêng — logic nằm trong
-`internal/handler/grpcsrv/`, gọi từ `cmd/server/grpc_enabled.go` (chỉ build
-khi có tag `grpc`, xem `Makefile`). `gateway` **không có** `grpc_server` —
-nó chỉ đóng vai trò client (mục 9), không implement RPC nào.
+`rag-recommend` has the exact same `src/grpc_server/` layout as `rag-docs`.
+`product-service` has no dedicated `grpc_server` folder — the logic lives in
+`internal/handler/grpcsrv/`, wired up from `cmd/server/grpc_enabled.go`
+(only built with the `grpc` build tag, see `Makefile`). `gateway` has **no**
+`grpc_server` at all — it only plays the client role (section 9), it
+implements no RPC.
 
-::: tip Sinh tự động hay viết tay?
-Khác với `grpc_gen` (mục 7, do máy sinh), **`grpc_server` luôn là code viết
-tay** — `protoc`/`buf` chỉ sinh ra "khung" (`Servicer` base class rỗng), còn
-logic nghiệp vụ bên trong (`Query` gọi retriever nào, `Create` ghi DB nào...)
-không script nào biết để sinh hộ. Xem mục 12 để biết điều này ảnh hưởng gì
-khi có version mới.
+::: tip Generated, or hand-written?
+Unlike `grpc_gen` (section 7, machine-generated), **`grpc_server` is always
+hand-written code** — `protoc`/`buf` only generates the empty `Servicer`
+"skeleton"; the business logic inside (which retriever `Query` calls, which
+DB `Create` writes to...) is something no script knows how to generate for
+you. See section 12 for what this means when a new version ships.
 :::
 
-## 9. `stub` — client sinh sẵn, gọi RPC như gọi hàm local
+## 9. `stub` — the generated client, calls an RPC like a local function
 
-`stub` là class được `protoc`/`buf` **sinh tự động** từ `service` (nằm trong
-`grpc_gen`, mục 7), đóng vai trò client: bạn gọi `stub.Search(request)`
-giống gọi một hàm Python/Go bình thường, phía dưới nó tự lo serialize
-message → gửi qua HTTP/2 → nhận response → deserialize ngược lại. Đây là
-điểm khác lớn nhất so với REST, nơi bạn phải tự ghép URL, tự set header, tự
-`json.loads()` response.
+A `stub` is a class **auto-generated** by `protoc`/`buf` from a `service`
+(living inside `grpc_gen`, section 7), acting as the client: you call
+`stub.Search(request)` just like a normal Python/Go function call, and under
+the hood it serializes the message → sends it over HTTP/2 → receives the
+response → deserializes it back. This is the biggest difference from REST,
+where you manually build the URL, set headers, and `json.loads()` the
+response yourself.
 
 ```python
 # services/gateway/src/clients/product_client.py
@@ -247,19 +257,20 @@ class ProductClient(ResolvingGrpcClient):
         return [_to_dict(p) for p in resp.results]
 ```
 
-`ProductServiceStub` được sinh sẵn trong
+`ProductServiceStub` is generated into
 `services/gateway/src/grpc_gen/techscout/product/v1/product_pb2_grpc.py` —
-không ai viết tay class này, nó tự sinh lại mỗi lần chạy `gen_proto.sh`
-(mục 6). Trong platform này, **chỉ `gateway` đóng vai trò client** — 3
-backend còn lại chỉ implement server (mục 8), không gọi ngược lại nhau.
+nobody hand-writes this class; it's regenerated every time `gen_proto.sh`
+runs (section 6). In this platform, **only `gateway` plays the client
+role** — the other 3 backends only implement servers (section 8), they never
+call each other.
 
-## 10. `channel` — kết nối tới server (tương đương connection/socket giữ lâu dài)
+## 10. `channel` — the connection to a server (a held-open connection/socket)
 
-`channel` là một kết nối HTTP/2 tới `host:port` của server, được **giữ và
-tái sử dụng** cho nhiều RPC liên tiếp thay vì mở/đóng mỗi lần gọi — nhờ
-HTTP/2 hỗ trợ multiplexing, nhiều RPC có thể chạy đồng thời trên cùng một
-`channel` mà không cần connection pool ở tầng ứng dụng như HTTP/1.1 thường
-làm.
+A `channel` is an HTTP/2 connection to a server's `host:port`, **held and
+reused** across many RPCs instead of opening/closing one per call — HTTP/2
+multiplexing lets many RPCs run concurrently over the same `channel` without
+needing an application-level connection pool the way HTTP/1.1 typically
+does.
 
 ```python
 # services/gateway/src/clients/base.py
@@ -269,123 +280,135 @@ async def _stub_for_call(self):
         if self._channel is not None:
             await self._channel.close()
         self._channel = grpc.aio.insecure_channel(addr)   # <- channel
-        self._stub = self._build_stub(self._channel)      # <- stub được build từ channel
+        self._stub = self._build_stub(self._channel)      # <- stub built from the channel
         self._addr = addr
     return self._stub
 ```
 
-Đoạn code này minh họa rõ **phụ thuộc**: `stub` (mục 9) luôn cần một
-`channel` để tạo ra (`ProductServiceStub(channel)`); `channel` chỉ cần địa
-chỉ `host:port` (ở đây lấy từ service-registry, có fallback tĩnh). Gateway
-chỉ tạo `channel` mới khi địa chỉ đổi, còn lại tái sử dụng — tương tự việc
-giữ 1 kết nối keep-alive thay vì mở kết nối HTTP mới cho mỗi request.
+This snippet shows the **dependency** clearly: a `stub` (section 9) always
+needs a `channel` to be constructed (`ProductServiceStub(channel)`); a
+`channel` only needs a `host:port` address (here resolved from the service
+registry, with a static fallback). The gateway only creates a new `channel`
+when the address changes, otherwise it reuses the existing one — similar to
+holding a keep-alive connection instead of opening a fresh HTTP connection
+per request.
 
-## 11. `version` (`.v1`) — mỗi contract gắn với 1 version cố định
+## 11. `version` (`.v1`) — every contract is pinned to one version
 
-Mỗi file sống tại `techscout/<svc>/v1/<svc>.proto`, khớp 1:1 với
-`package techscout.<svc>.v1;`. Muốn breaking change, **không sửa `v1` tại
-chỗ** — tạo `techscout/<svc>/v2/` song song, `v1` vẫn chạy cho tới khi mọi
-consumer migrate xong. Mục này chỉ tóm tắt khái niệm; **`grpc_server` cụ thể
-thay đổi ra sao khi có `v2`** → xem mục 12 ngay bên dưới. Quy trình đầy đủ
-(kèm checklist) xem
-[Quy trình cập nhật proto § Thêm version mới](/updating-protos#thêm-version-mới-v2-song-song-với-v1).
+Each file lives at `techscout/<svc>/v1/<svc>.proto`, matching
+`package techscout.<svc>.v1;` 1:1. For a breaking change, **don't edit `v1`
+in place** — create `techscout/<svc>/v2/` alongside it; `v1` keeps working
+until every consumer has migrated off it. This section is just the concept
+summary — for **exactly how `grpc_server` changes** when `v2` ships, see
+section 12 right below. For the full process with a checklist, see
+[Updating a proto § Adding a new version](/updating-protos#adding-a-new-version-v2-alongside-v1).
 
-## 12. Khi thêm version mới (v2), `grpc_server` cập nhật thế nào?
+## 12. When a new version (v2) ships, how does `grpc_server` update?
 
-Điểm quan trọng cần phân biệt (đã nhắc ở mục 8): `grpc_gen` là code **sinh tự
-động**, còn `grpc_server` là code **viết tay**. Khi có `v2`, phần **sinh
-code** tự lo, nhưng phần **implement logic nghiệp vụ** luôn cần một người
-viết tay — không có tool nào tự sinh ra "logic" cho bạn.
+The important distinction (already flagged in section 8): `grpc_gen` is
+**machine-generated** code, while `grpc_server` is **hand-written** code.
+When `v2` arrives, the code-generation side takes care of itself, but the
+business-logic implementation always needs a human to write it — no tool
+generates "logic" for you.
 
-### Việc gì tự động, việc gì phải tự tay làm
+### What's automatic, what's manual
 
-| Bước | Tự động hay thủ công? | Thực hiện ở đâu |
+| Step | Automatic or manual? | Where it happens |
 | --- | --- | --- |
-| Thêm `techscout/<svc>/v2/<svc>.proto`, đổi `package` sang `.v2` | Thủ công (dev viết proto) | `techscout-protos` |
-| Bump submodule để có cả `v1` + `v2` | Tự động (`proto-sync.yml`) hoặc `git submodule update --remote` thủ công | Repo tiêu thụ |
-| Sinh `grpc_gen/.../v2/*_pb2.py` + `*_pb2_grpc.py` — trong đó có `Servicer` base class **mới, rỗng** cho v2 | Tự động — chạy lại script mục 6 | `gen_proto.sh` / `make proto` |
-| Viết class implement servicer v2 (logic nghiệp vụ thật) | **Luôn thủ công** | `grpc_server/service.py` (Python) hoặc `internal/handler/grpcsrv` (Go) |
-| Đăng ký **cả `v1` lẫn `v2`** trên cùng một `grpc.Server` | **Thủ công** — sửa file build server | `grpc_server/server.py` hoặc `cmd/server/grpc_enabled.go` |
+| Add `techscout/<svc>/v2/<svc>.proto`, change `package` to `.v2` | Manual (a dev writes the proto) | `techscout-protos` |
+| Bump the submodule to have both `v1` and `v2` | Automatic (`proto-sync.yml`) or manual `git submodule update --remote` | Consumer repo |
+| Generate `grpc_gen/.../v2/*_pb2.py` + `*_pb2_grpc.py` — including a **new, empty** `Servicer` base class for v2 | Automatic — re-run the script from section 6 | `gen_proto.sh` / `make proto` |
+| Write a servicer class implementing v2 (the real business logic) | **Always manual** | `grpc_server/service.py` (Python) or `internal/handler/grpcsrv` (Go) |
+| Register **both `v1` and `v2`** on the same `grpc.Server` | **Manual** — edit the server-building file | `grpc_server/server.py` or `cmd/server/grpc_enabled.go` |
 
-### `grpc_server` nằm ở đâu, dùng để làm gì
+### Where `grpc_server` lives, and what it's for
 
-`grpc_server` là nơi **duy nhất** chứa logic nghiệp vụ thật (gọi retriever,
-LLM, DB...) — khác `grpc_gen` chỉ có "khung" class rỗng để implement. Vị trí
-cụ thể theo từng service, và việc cần thêm khi có `v2`:
+`grpc_server` is the **only** place holding real business logic (calling a
+retriever, an LLM, a DB...) — unlike `grpc_gen`, which only has an empty
+class "skeleton" to implement. Exact location per service, and what you'd
+need to add for `v2`:
 
-| Service | File hiện có (`v1`) | Khi thêm `v2`, cần thêm gì |
+| Service | Existing file (`v1`) | What to add for `v2` |
 | --- | --- | --- |
-| `rag-docs` | `src/grpc_server/service.py` (`DocsServicer`), `src/grpc_server/server.py` (`build_server`) | Class servicer mới (ví dụ `DocsServicerV2`) implement `Servicer` sinh ra từ `v2`; `build_server()` gọi thêm `add_DocsServiceServicer_to_server(...)` phiên bản `v2` trên **cùng** một `server` |
-| `rag-recommend` | `src/grpc_server/` (cấu trúc y hệt `rag-docs`) | Tương tự — thêm servicer `v2`, đăng ký thêm trong `server.py` |
-| `product-service` | `internal/handler/grpcsrv/` (implement) + `cmd/server/grpc_enabled.go` (gọi `RegisterProductServiceServer`) | Thêm handler `v2` trong `grpcsrv`, `grpc_enabled.go` gọi thêm `productv2.RegisterProductServiceServer(s, ...)` trên **cùng** `s := grpc.NewServer()` (đúng ví dụ đã nêu trong [Quy trình cập nhật proto](/updating-protos#thêm-version-mới-v2-song-song-với-v1)) |
-| `gateway` | Không có `grpc_server` — chỉ là **client** (`src/clients/`) | Không cần đăng ký gì phía server; chỉ đổi `stub` sang import `v2` khi sẵn sàng migrate (mục 9) |
+| `rag-docs` | `src/grpc_server/service.py` (`DocsServicer`), `src/grpc_server/server.py` (`build_server`) | A new servicer class (e.g. `DocsServicerV2`) implementing the `Servicer` generated from `v2`; `build_server()` calls the `v2` version of `add_DocsServiceServicer_to_server(...)` on the **same** `server` |
+| `rag-recommend` | `src/grpc_server/` (exact same layout as `rag-docs`) | Same idea — add a `v2` servicer, register it in `server.py` too |
+| `product-service` | `internal/handler/grpcsrv/` (implementation) + `cmd/server/grpc_enabled.go` (calls `RegisterProductServiceServer`) | Add a `v2` handler in `grpcsrv`, have `grpc_enabled.go` also call `productv2.RegisterProductServiceServer(s, ...)` on the **same** `s := grpc.NewServer()` (exactly the example already given in [Updating a proto](/updating-protos#adding-a-new-version-v2-alongside-v1)) |
+| `gateway` | No `grpc_server` — it's only a **client** (`src/clients/`) | Nothing to register server-side; just switch the `stub` to import `v2` when ready to migrate (section 9) |
 
-::: warning Tên class ở trên chỉ là ví dụ minh họa
-`DocsServicerV2`, `grpcsrv.NewV2(...)` không phải tên đã tồn tại sẵn trong
-repo — hiện tại cả 3 service mới chỉ có `v1`. Đây là cách đặt tên hợp lý
-theo đúng khuôn mẫu Go đã dùng thật trong
-[Quy trình cập nhật proto](/updating-protos#thêm-version-mới-v2-song-song-với-v1)
-(`productv1.RegisterProductServiceServer(...)` **và**
-`productv2.RegisterProductServiceServer(...)` trên cùng `grpc.Server`), áp
-dụng tương tự sang Python.
+::: warning The class names above are illustrative
+`DocsServicerV2`, `grpcsrv.NewV2(...)` are not names that already exist in
+the repo — right now all 3 services only have `v1`. This is the sensible
+naming convention following the exact pattern already documented for Go in
+[Updating a proto](/updating-protos#adding-a-new-version-v2-alongside-v1)
+(`productv1.RegisterProductServiceServer(...)` **and**
+`productv2.RegisterProductServiceServer(...)` on the same `grpc.Server`),
+applied the same way to Python.
 :::
 
-### Trình tự cập nhật `grpc_server` khi ra `v2`
+### Step-by-step: updating `grpc_server` for `v2`
 
-1. Bump submodule → có cả `techscout/<svc>/v1/` và `techscout/<svc>/v2/`
-   trong `proto/`.
-2. Chạy lại `gen_proto.sh`/`make proto` (mục 6) → `grpc_gen`/`api/proto` có
-   thêm cây `v2/` **song song** `v1` (không ghi đè).
-3. **Tự viết** class servicer mới cho `v2` — thường bắt đầu bằng cách copy
-   logic từ servicer `v1`, rồi chỉnh theo message/field mới của `v2`.
-4. Sửa `server.py`/`grpc_enabled.go`: đăng ký **cả hai** servicer (`v1` và
-   `v2`) trên cùng một `grpc.Server`/cùng một cổng — client cũ và mới đều
-   được phục vụ song song trong giai đoạn chuyển tiếp.
-5. Deploy — server giờ trả lời được cả 2 version cùng lúc, không service nào
-   bị gián đoạn.
-6. Khi gateway (client) đã chuyển hết sang gọi `v2` và không còn traffic
-   `v1`: gỡ registration + xóa class servicer `v1` khỏi `grpc_server`, xóa
-   `techscout/<svc>/v1/` khỏi `techscout-protos` (chi tiết bước dọn dẹp xem
-   [Quy trình cập nhật proto](/updating-protos#thêm-version-mới-v2-song-song-với-v1)).
+1. Bump the submodule → both `techscout/<svc>/v1/` and `techscout/<svc>/v2/`
+   exist under `proto/`.
+2. Re-run `gen_proto.sh`/`make proto` (section 6) → `grpc_gen`/`api/proto`
+   gets a new `v2/` tree **alongside** `v1` (nothing is overwritten).
+3. **Hand-write** a new servicer class for `v2` — usually by copying the
+   `v1` servicer's logic as a starting point, then adjusting for `v2`'s new
+   messages/fields.
+4. Edit `server.py`/`grpc_enabled.go`: register **both** servicers (`v1` and
+   `v2`) on the same `grpc.Server`/the same port — old and new clients are
+   both served in parallel during the transition.
+5. Deploy — the server now answers both versions at once, with no
+   interruption to either.
+6. Once the gateway (client) has fully switched to calling `v2` and there's
+   no `v1` traffic left: remove the `v1` registration and delete the `v1`
+   servicer class from `grpc_server`, and remove
+   `techscout/<svc>/v1/` from `techscout-protos` (cleanup steps detailed in
+   [Updating a proto](/updating-protos#adding-a-new-version-v2-alongside-v1)).
 
-::: tip Vì sao không có tool tự sinh servicer?
-`protoc`/`buf` chỉ biết **hình dạng** dữ liệu và chữ ký hàm (từ `.proto`),
-không biết bạn muốn hàm đó làm gì (query database nào, gọi LLM nào...) — đó
-là lý do `Servicer`/interface luôn cần người viết tay, trong khi `Stub` phía
-client (mục 9) thì sinh tự động hoàn chỉnh, vì phía client chỉ cần gọi qua
-mạng, không có logic nghiệp vụ nào để quyết định.
+::: tip Why isn't there a tool that generates the servicer?
+`protoc`/`buf` only know the **shape** of the data and function signatures
+(from the `.proto`) — they have no idea what you want the function to
+actually do (which database to query, which LLM to call...). That's why the
+`Servicer`/interface always needs a human to write it, while the client-side
+`Stub` (section 9) generates completely on its own — the client side only
+needs to call over the network, with no business decision to make.
 :::
 
-## 13. Thứ tự cập nhật 1 proto — bản tóm tắt nhanh
+## 13. Order of operations for updating a proto — quick recap
 
-1. Sửa `.proto` trên 1 branch mới.
-2. Chạy `buf lint` + `buf breaking` local (mục 5) — sửa tới khi cả hai pass.
-3. Mở PR vào `main` → `ci.yml` chạy lại đúng 2 lệnh trên, chặn merge nếu fail.
-4. Merge → `dispatch-on-change.yml` phát hiện file đổi, gửi
-   `repository_dispatch` đúng tới repo tiêu thụ file đó.
-5. Mỗi repo tiêu thụ tự chạy `proto-sync.yml`: bump submodule → chạy
-   `gen_proto.sh`/`make proto` (mục 6) → commit stub mới → trigger build/deploy.
-6. Nếu là breaking change thật sự: dùng `v2` song song thay vì sửa `v1`
-   (mục 11), rồi cả server (`grpc_server` — chi tiết ở mục 12) lẫn client
-   (`stub`/`channel` — mục 9, 10) tự chọn thời điểm migrate.
+1. Edit the `.proto` on a new branch.
+2. Run `buf lint` + `buf breaking` locally (section 5) — fix until both pass.
+3. Open a PR into `main` → `ci.yml` re-runs the same two commands, blocking
+   the merge on failure.
+4. Merge → `dispatch-on-change.yml` detects the changed file(s) and sends a
+   `repository_dispatch` to exactly the repos that consume that file.
+5. Each consumer's `proto-sync.yml` runs on its own: bump the submodule →
+   run `gen_proto.sh`/`make proto` (section 6) → commit the new stubs →
+   trigger a build/deploy.
+6. For a genuine breaking change: ship it as `v2` alongside `v1` (section
+   11) instead of editing `v1`, then the server (`grpc_server` — details in
+   section 12) and the client (`stub`/`channel` — sections 9, 10) each
+   migrate on their own schedule.
 
-Chi tiết từng bước, kèm cách thêm proto mới hoàn toàn hoặc xóa RPC không dùng
-→ xem trọn [Quy trình cập nhật proto](/updating-protos). Chuỗi sự kiện CI
-đầy đủ (workflow nào chạy khi nào) → xem [Luồng CI/CD](/ci-flow).
+For the full step-by-step, including adding a brand-new proto or removing an
+unused RPC → see the full [Updating a proto](/updating-protos) guide. For
+the complete CI event chain (which workflow runs when) → see
+[CI/CD flow](/ci-flow).
 
-## 14. Luồng hoạt động & phụ thuộc giữa các khái niệm
+## 14. End-to-end flow & dependency between concepts
 
-Đọc sơ đồ theo chiều mũi tên, từ trên xuống rồi rẽ nhánh: **server** cần code
-sinh ra để có `Servicer` base class mà implement; **client** cần code sinh ra
-để có `Stub` + `message` class, và cần một `channel` để `Stub` gọi qua mạng.
-Cả hai phía luôn build từ **cùng một** `.proto` (qua git submodule) — đó là
-lý do toàn bộ hạ tầng CI trong [Luồng CI/CD](/ci-flow) tồn tại: đảm bảo mọi
-consumer generate lại code đúng lúc `.proto` đổi, để client và server không
-bao giờ lệch hợp đồng.
+Read the diagram by following the arrows top to bottom, then branching: the
+**server** needs the generated code to get a `Servicer` base class to
+implement; the **client** needs the generated code to get the `Stub` +
+`message` classes, plus a `channel` for the `Stub` to call over the network.
+Both sides always build from the **same** `.proto` (via the git submodule) —
+that's exactly why the CI infrastructure in [CI/CD flow](/ci-flow)
+exists: to make sure every consumer regenerates its code the moment the
+`.proto` changes, so client and server never drift apart on the contract.
 
 <svg viewBox="0 0 880 500" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;display:block;margin:24px auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <defs>
-    <marker id="arrow-vi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="arrow-en" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="var(--vp-c-brand-1, #3451b2)" />
     </marker>
   </defs>
@@ -393,72 +416,75 @@ bao giờ lệch hợp đồng.
   <rect x="290" y="10" width="300" height="66" rx="8" fill="var(--vp-c-bg-soft, #f6f6f7)" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" />
   <text x="440" y="34" text-anchor="middle" font-size="13" font-weight="600" fill="var(--vp-c-text-1, #213547)">.proto</text>
   <text x="440" y="52" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">message + service + rpc</text>
-  <text x="440" y="67" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">= "hợp đồng" (mục 2-4)</text>
+  <text x="440" y="67" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">= "the contract" (sections 2-4)</text>
 
-  <line x1="440" y1="76" x2="440" y2="110" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" marker-end="url(#arrow-vi)" />
+  <line x1="440" y1="76" x2="440" y2="110" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" marker-end="url(#arrow-en)" />
   <text x="452" y="97" font-size="10.5" fill="var(--vp-c-text-2, #3c3c43)">buf lint / buf breaking</text>
-  <text x="452" y="109" font-size="10.5" fill="var(--vp-c-text-2, #3c3c43)">- vệ sĩ, chạy trước merge (mục 5)</text>
+  <text x="452" y="109" font-size="10.5" fill="var(--vp-c-text-2, #3c3c43)">- guards, run before merge (section 5)</text>
 
   <rect x="270" y="112" width="340" height="56" rx="8" fill="var(--vp-c-bg-soft, #f6f6f7)" stroke="var(--vp-c-divider, #e2e2e3)" stroke-width="1.5" />
   <text x="440" y="136" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--vp-c-text-1, #213547)">gen_proto.sh (Python)</text>
-  <text x="440" y="153" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--vp-c-text-1, #213547)">make proto (Go) - mục 6</text>
+  <text x="440" y="153" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--vp-c-text-1, #213547)">make proto (Go) - section 6</text>
 
-  <line x1="440" y1="168" x2="440" y2="200" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" marker-end="url(#arrow-vi)" />
+  <line x1="440" y1="168" x2="440" y2="200" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" marker-end="url(#arrow-en)" />
 
   <rect x="140" y="202" width="600" height="72" rx="8" fill="var(--vp-c-bg-soft, #f6f6f7)" stroke="var(--vp-c-divider, #e2e2e3)" stroke-width="1.5" />
   <text x="440" y="226" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--vp-c-text-1, #213547)">grpc_gen/*_pb2.py + *_pb2_grpc.py</text>
-  <text x="440" y="244" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">(hoặc api/proto/.../*.pb.go) - code sinh ra, mục 7</text>
+  <text x="440" y="244" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">(or api/proto/.../*.pb.go) - generated code, section 7</text>
   <text x="440" y="261" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">message classes . Stub class . Servicer base class</text>
 
-  <line x1="300" y1="274" x2="190" y2="330" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" marker-end="url(#arrow-vi)" />
+  <line x1="300" y1="274" x2="190" y2="330" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" marker-end="url(#arrow-en)" />
   <text x="150" y="300" font-size="10.5" fill="var(--vp-c-text-2, #3c3c43)">Servicer base class</text>
 
-  <line x1="580" y1="274" x2="690" y2="330" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" marker-end="url(#arrow-vi)" />
+  <line x1="580" y1="274" x2="690" y2="330" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" marker-end="url(#arrow-en)" />
   <text x="640" y="300" font-size="10.5" fill="var(--vp-c-text-2, #3c3c43)">Stub + message</text>
 
   <rect x="30" y="332" width="340" height="106" rx="8" fill="var(--vp-c-bg-soft, #f6f6f7)" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" />
   <text x="200" y="357" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--vp-c-brand-1, #3451b2)">SERVER</text>
   <text x="200" y="376" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--vp-c-text-1, #213547)">grpc_server</text>
-  <text x="200" y="393" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">implement Servicer (mục 8)</text>
-  <text x="200" y="409" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">logic nghiệp vụ - viết tay (mục 12)</text>
+  <text x="200" y="393" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">implements Servicer (section 8)</text>
+  <text x="200" y="409" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">business logic - hand-written (section 12)</text>
   <text x="200" y="425" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">rag-docs, rag-recommend, product-service</text>
 
   <rect x="510" y="332" width="340" height="106" rx="8" fill="var(--vp-c-bg-soft, #f6f6f7)" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" />
   <text x="680" y="357" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--vp-c-brand-1, #3451b2)">CLIENT</text>
   <text x="680" y="376" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--vp-c-text-1, #213547)">stub + channel</text>
-  <text x="680" y="393" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">gateway gọi ra (mục 9, 10)</text>
+  <text x="680" y="393" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">gateway calls out (sections 9, 10)</text>
   <text x="680" y="409" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">resolver -&gt; channel -&gt; stub.Search(...)</text>
-  <text x="680" y="425" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">chỉ services/gateway</text>
+  <text x="680" y="425" text-anchor="middle" font-size="11" fill="var(--vp-c-text-2, #3c3c43)">only services/gateway</text>
 
-  <line x1="370" y1="385" x2="510" y2="385" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" marker-end="url(#arrow-vi)" marker-start="url(#arrow-vi)" />
+  <line x1="370" y1="385" x2="510" y2="385" stroke="var(--vp-c-brand-1, #3451b2)" stroke-width="1.5" marker-end="url(#arrow-en)" marker-start="url(#arrow-en)" />
   <text x="440" y="470" text-anchor="middle" font-size="11.5" font-weight="600" fill="var(--vp-c-text-1, #213547)">HTTP/2 (RPC)</text>
-  <text x="440" y="486" text-anchor="middle" font-size="10.5" fill="var(--vp-c-text-2, #3c3c43)">channel giữ kết nối, multiplex nhiều RPC</text>
+  <text x="440" y="486" text-anchor="middle" font-size="10.5" fill="var(--vp-c-text-2, #3c3c43)">channel held open, multiplexing many RPCs</text>
 </svg>
 
-## 15. Vì sao platform này chọn gRPC (thay vì thuần HTTP/JSON)?
+## 15. Why this platform chose gRPC over plain HTTP/JSON
 
-- **Giao tiếp nội bộ, tần suất cao**: gateway gọi xuống 3 backend liên tục
-  (mỗi request người dùng có thể kéo theo vài RPC) — payload binary nhỏ hơn,
-  encode/decode nhanh hơn JSON đáng kể ở quy mô này.
-- **Hợp đồng bắt buộc, không thể lệch**: `.proto` vừa là tài liệu vừa là
-  nguồn sinh code cho cả Go (`product-service`) lẫn Python (`gateway`,
-  `rag-docs`, `rag-recommend`) — không có kiểu "server đổi field mà client
-  quên cập nhật" vì client/server đều generate từ cùng 1 file, cùng 1 commit
-  submodule.
-- **`buf lint`/`buf breaking` tự động hóa review contract**: REST/JSON không
-  có công cụ tương đương chuẩn hóa sẵn để chặn breaking change ngay trong CI
-  — ở đây một PR đổi số field sai sẽ fail trước khi merge, không phải phát
-  hiện lúc chạy production.
-- **HTTP/2 multiplexing**: nhiều RPC đồng thời share 1 `channel`, giảm
-  overhead so với mở nhiều kết nối HTTP/1.1.
-- **Không đánh đổi trải nghiệm public API**: gRPC chỉ dùng **nội bộ**
-  (gateway ⇄ backend); trình duyệt/FE vẫn gọi gateway qua HTTP/REST bình
-  thường — gateway đứng giữa "dịch" 2 chiều, nên không mất tính dễ dùng của
-  REST ở phía ngoài.
+- **High-frequency internal traffic**: the gateway calls down to 3 backends
+  constantly (a single user request can fan out into several RPCs) — a
+  binary payload is noticeably smaller and faster to encode/decode than
+  JSON at this scale.
+- **A mandatory, never-drifting contract**: the `.proto` is both the
+  documentation and the code-generation source for Go (`product-service`)
+  and Python (`gateway`, `rag-docs`, `rag-recommend`) alike — there's no
+  "server changed a field but the client forgot to update" scenario,
+  because client and server both generate from the same file, the same
+  submodule commit.
+- **`buf lint`/`buf breaking` automate contract review**: REST/JSON has no
+  standard equivalent tooling to block a breaking change right in CI — here
+  a PR that changes a field number the wrong way fails before it can merge,
+  not after it's discovered in production.
+- **HTTP/2 multiplexing**: many concurrent RPCs share one `channel`,
+  reducing overhead compared to opening multiple HTTP/1.1 connections.
+- **No trade-off on the public API experience**: gRPC is only used
+  **internally** (gateway ⇄ backend); the browser/frontend still calls the
+  gateway over plain HTTP/REST — the gateway sits in the middle translating
+  both ways, so REST's ease of use at the edge isn't lost.
 
-::: tip Đánh đổi (trade-off) cần biết
-gRPC không human-readable trực tiếp (không `curl` xem JSON được như REST —
-cần công cụ như `grpcurl`/`buf curl`), và không chạy thẳng từ trình duyệt
-nếu không có gateway/proxy dịch — đây chính là lý do platform dùng mô hình
-"gRPC nội bộ + HTTP/REST ở edge" thay vì gRPC toàn hệ thống.
+::: tip Trade-offs worth knowing
+gRPC isn't directly human-readable — you can't just `curl` it and read JSON
+like REST; you need a tool like `grpcurl`/`buf curl`. It also can't be
+called directly from a browser without a gateway/proxy to translate — which
+is exactly why the platform uses "gRPC internally + HTTP/REST at the edge"
+instead of gRPC end to end.
 :::

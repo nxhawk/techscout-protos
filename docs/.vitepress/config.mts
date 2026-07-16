@@ -7,48 +7,94 @@ const base = "/techscout-protos/";
 export default defineConfig({
   base,
   title: "techscout-protos",
-  description: "Hợp đồng gRPC dùng chung cho nền tảng TechScout",
+  description: "Shared gRPC contracts for the TechScout platform",
   lastUpdated: true,
   cleanUrls: true,
+  // .en-deprecated/ holds leftover files from a locale-layout migration and
+  // must never be picked up as site pages.
+  srcExclude: ["**/.en-deprecated/**"],
 
   head: [["link", { rel: "icon", href: `${base}favicon.svg` }]],
 
-  // Root locale = Vietnamese (files live directly under docs/).
-  // English lives under docs/en/ and is served at /en/.
+  // Root locale = English (files live directly under docs/).
+  // Vietnamese lives under docs/vi/ and is served at /vi/.
   locales: {
     root: {
+      label: "English",
+      lang: "en-US",
+      title: "techscout-protos",
+      description: "Shared gRPC contracts for the TechScout platform",
+      themeConfig: {
+        nav: [
+          { text: "Home", link: "/" },
+          { text: "gRPC Concepts", link: "/concepts" },
+          { text: "CI Flow", link: "/ci-flow" },
+          { text: "Updating Protos", link: "/updating-protos" },
+          { text: "Proto Reference", link: "/proto-reference" },
+          { text: "Setup", link: "/setup" },
+        ],
+        sidebar: [
+          {
+            text: "Getting started",
+            items: [
+              { text: "Introduction", link: "/" },
+              { text: "gRPC & Proto concepts", link: "/concepts" },
+              { text: "Setup & local dev", link: "/setup" },
+            ],
+          },
+          {
+            text: "Operations",
+            items: [
+              { text: "CI/CD flow in detail", link: "/ci-flow" },
+              { text: "Updating a proto", link: "/updating-protos" },
+            ],
+          },
+          {
+            text: "Reference",
+            items: [{ text: "What each proto means", link: "/proto-reference" }],
+          },
+        ],
+        editLink: {
+          pattern:
+            "https://github.com/nxhawk/techscout-protos/edit/main/docs/:path",
+          text: "Edit this page on GitHub",
+        },
+      },
+    },
+    vi: {
       label: "Tiếng Việt",
       lang: "vi-VN",
+      link: "/vi/",
       title: "techscout-protos",
       description: "Hợp đồng gRPC dùng chung cho nền tảng TechScout",
       themeConfig: {
         nav: [
-          { text: "Trang chủ", link: "/" },
-          { text: "Khái niệm gRPC", link: "/concepts" },
-          { text: "Luồng CI", link: "/ci-flow" },
-          { text: "Cập nhật proto", link: "/updating-protos" },
-          { text: "Tham chiếu proto", link: "/proto-reference" },
-          { text: "Cài đặt", link: "/setup" },
+          { text: "Trang chủ", link: "/vi/" },
+          { text: "Khái niệm gRPC", link: "/vi/concepts" },
+          { text: "Luồng CI", link: "/vi/ci-flow" },
+          { text: "Cập nhật proto", link: "/vi/updating-protos" },
+          { text: "Tham chiếu proto", link: "/vi/proto-reference" },
+          { text: "Cài đặt", link: "/vi/setup" },
         ],
         sidebar: [
           {
             text: "Bắt đầu",
             items: [
-              { text: "Giới thiệu", link: "/" },
-              { text: "Khái niệm gRPC & Proto cơ bản", link: "/concepts" },
-              { text: "Cài đặt & chạy local", link: "/setup" },
+              { text: "Giới thiệu", link: "/vi/" },
+              { text: "Khái niệm gRPC & Proto cơ bản", link: "/vi/concepts" },
+              { text: "Cài đặt & chạy local", link: "/vi/setup" },
             ],
           },
           {
             text: "Vận hành",
             items: [
-              { text: "Luồng CI/CD chi tiết", link: "/ci-flow" },
-              { text: "Quy trình cập nhật proto", link: "/updating-protos" },
+              { text: "Luồng CI/CD chi tiết", link: "/vi/ci-flow" },
+              { text: "Quy trình cập nhật proto", link: "/vi/updating-protos" },
             ],
           },
           {
             text: "Tham chiếu",
-            items: [{ text: "Ý nghĩa từng proto", link: "/proto-reference" }],
+            items: [{ text: "Ý nghĩa từng proto", link: "/vi/proto-reference" }],
           },
         ],
         outline: { label: "Trên trang này" },
@@ -64,49 +110,6 @@ export default defineConfig({
         },
       },
     },
-    en: {
-      label: "English",
-      lang: "en-US",
-      link: "/en/",
-      title: "techscout-protos",
-      description: "Shared gRPC contracts for the TechScout platform",
-      themeConfig: {
-        nav: [
-          { text: "Home", link: "/en/" },
-          { text: "gRPC Concepts", link: "/en/concepts" },
-          { text: "CI Flow", link: "/en/ci-flow" },
-          { text: "Updating Protos", link: "/en/updating-protos" },
-          { text: "Proto Reference", link: "/en/proto-reference" },
-          { text: "Setup", link: "/en/setup" },
-        ],
-        sidebar: [
-          {
-            text: "Getting started",
-            items: [
-              { text: "Introduction", link: "/en/" },
-              { text: "gRPC & Proto concepts", link: "/en/concepts" },
-              { text: "Setup & local dev", link: "/en/setup" },
-            ],
-          },
-          {
-            text: "Operations",
-            items: [
-              { text: "CI/CD flow in detail", link: "/en/ci-flow" },
-              { text: "Updating a proto", link: "/en/updating-protos" },
-            ],
-          },
-          {
-            text: "Reference",
-            items: [{ text: "What each proto means", link: "/en/proto-reference" }],
-          },
-        ],
-        editLink: {
-          pattern:
-            "https://github.com/nxhawk/techscout-protos/edit/main/docs/:path",
-          text: "Edit this page on GitHub",
-        },
-      },
-    },
   },
 
   themeConfig: {
@@ -117,7 +120,7 @@ export default defineConfig({
       provider: "local",
       options: {
         locales: {
-          root: {
+          vi: {
             translations: {
               button: { buttonText: "Tìm kiếm", buttonAriaLabel: "Tìm kiếm" },
               modal: {

@@ -21,9 +21,9 @@ update process → a summary diagram → why gRPC was chosen.
 
 ::: tip How is this different from the other pages?
 This page explains **concepts**. For the **process** of editing a proto →
-see [Updating a proto](/en/updating-protos). For the **CI workflows** that
-run → see [CI/CD flow](/en/ci-flow). To look up **each RPC/message** → see
-[Proto reference](/en/proto-reference).
+see [Updating a proto](/updating-protos). For the **CI workflows** that
+run → see [CI/CD flow](/ci-flow). To look up **each RPC/message** → see
+[Proto reference](/proto-reference).
 :::
 
 ## 1. Quick cross-reference: gRPC vs HTTP/REST
@@ -99,7 +99,7 @@ service ProductService {
 
 The three services in this repo (`ProductService`, `RecommendService`,
 `DocsService`) — full RPC/message details in
-[Proto reference](/en/proto-reference). All three currently use **unary
+[Proto reference](/proto-reference). All three currently use **unary
 RPCs** (one request → one response, exactly like a REST request/response) —
 gRPC also supports streaming (client/server/bidirectional) but the platform
 doesn't need it yet.
@@ -115,7 +115,7 @@ the first thing that runs on a PR — before code generation even happens
 | Checks | **Style** — naming, suffixes, file placement... | **Backward compatibility** — against the previous version |
 | Compared against | Nothing, just inspects the current file | `main` (`--against '.git#branch=main'`) |
 | Example caught error | `service Product` missing the `Service` suffix, a field named in `camelCase` instead of `snake_case` | Changing a field number, changing a field's type, removing an RPC still in use |
-| Config in repo | `buf.yaml` → `lint.use: STANDARD`, minus 2 disabled rules (see [Proto reference](/en/proto-reference)) | `buf.yaml` → `breaking.use: FILE` |
+| Config in repo | `buf.yaml` → `lint.use: STANDARD`, minus 2 disabled rules (see [Proto reference](/proto-reference)) | `buf.yaml` → `breaking.use: FILE` |
 | Runs when | Every proto PR/push | Every proto PR/push |
 
 ```bash
@@ -159,7 +159,7 @@ client for all 3 backends); `rag-docs`/`rag-recommend` name exactly one file
   git**, because the service's Dockerfile ships the already-committed stubs
   and never runs codegen at image build time. This is why `proto-sync.yml`
   needs `PROTO_BOT_TOKEN` to push (see
-  [CI/CD flow](/en/ci-flow#3-on-the-consumer-side-proto-guardyml-proto-syncyml)).
+  [CI/CD flow](/ci-flow#3-on-the-consumer-side-proto-guardyml-proto-syncyml)).
 :::
 
 ## 7. `grpc_gen` — the generated code folder, never hand-edit it
@@ -301,7 +301,7 @@ in place** — create `techscout/<svc>/v2/` alongside it; `v1` keeps working
 until every consumer has migrated off it. This section is just the concept
 summary — for **exactly how `grpc_server` changes** when `v2` ships, see
 section 12 right below. For the full process with a checklist, see
-[Updating a proto § Adding a new version](/en/updating-protos#adding-a-new-version-v2-alongside-v1).
+[Updating a proto § Adding a new version](/updating-protos#adding-a-new-version-v2-alongside-v1).
 
 ## 12. When a new version (v2) ships, how does `grpc_server` update?
 
@@ -332,14 +332,14 @@ need to add for `v2`:
 | --- | --- | --- |
 | `rag-docs` | `src/grpc_server/service.py` (`DocsServicer`), `src/grpc_server/server.py` (`build_server`) | A new servicer class (e.g. `DocsServicerV2`) implementing the `Servicer` generated from `v2`; `build_server()` calls the `v2` version of `add_DocsServiceServicer_to_server(...)` on the **same** `server` |
 | `rag-recommend` | `src/grpc_server/` (exact same layout as `rag-docs`) | Same idea — add a `v2` servicer, register it in `server.py` too |
-| `product-service` | `internal/handler/grpcsrv/` (implementation) + `cmd/server/grpc_enabled.go` (calls `RegisterProductServiceServer`) | Add a `v2` handler in `grpcsrv`, have `grpc_enabled.go` also call `productv2.RegisterProductServiceServer(s, ...)` on the **same** `s := grpc.NewServer()` (exactly the example already given in [Updating a proto](/en/updating-protos#adding-a-new-version-v2-alongside-v1)) |
+| `product-service` | `internal/handler/grpcsrv/` (implementation) + `cmd/server/grpc_enabled.go` (calls `RegisterProductServiceServer`) | Add a `v2` handler in `grpcsrv`, have `grpc_enabled.go` also call `productv2.RegisterProductServiceServer(s, ...)` on the **same** `s := grpc.NewServer()` (exactly the example already given in [Updating a proto](/updating-protos#adding-a-new-version-v2-alongside-v1)) |
 | `gateway` | No `grpc_server` — it's only a **client** (`src/clients/`) | Nothing to register server-side; just switch the `stub` to import `v2` when ready to migrate (section 9) |
 
 ::: warning The class names above are illustrative
 `DocsServicerV2`, `grpcsrv.NewV2(...)` are not names that already exist in
 the repo — right now all 3 services only have `v1`. This is the sensible
 naming convention following the exact pattern already documented for Go in
-[Updating a proto](/en/updating-protos#adding-a-new-version-v2-alongside-v1)
+[Updating a proto](/updating-protos#adding-a-new-version-v2-alongside-v1)
 (`productv1.RegisterProductServiceServer(...)` **and**
 `productv2.RegisterProductServiceServer(...)` on the same `grpc.Server`),
 applied the same way to Python.
@@ -363,7 +363,7 @@ applied the same way to Python.
    no `v1` traffic left: remove the `v1` registration and delete the `v1`
    servicer class from `grpc_server`, and remove
    `techscout/<svc>/v1/` from `techscout-protos` (cleanup steps detailed in
-   [Updating a proto](/en/updating-protos#adding-a-new-version-v2-alongside-v1)).
+   [Updating a proto](/updating-protos#adding-a-new-version-v2-alongside-v1)).
 
 ::: tip Why isn't there a tool that generates the servicer?
 `protoc`/`buf` only know the **shape** of the data and function signatures
@@ -391,9 +391,9 @@ needs to call over the network, with no business decision to make.
    migrate on their own schedule.
 
 For the full step-by-step, including adding a brand-new proto or removing an
-unused RPC → see the full [Updating a proto](/en/updating-protos) guide. For
+unused RPC → see the full [Updating a proto](/updating-protos) guide. For
 the complete CI event chain (which workflow runs when) → see
-[CI/CD flow](/en/ci-flow).
+[CI/CD flow](/ci-flow).
 
 ## 14. End-to-end flow & dependency between concepts
 
@@ -402,7 +402,7 @@ Read the diagram by following the arrows top to bottom, then branching: the
 implement; the **client** needs the generated code to get the `Stub` +
 `message` classes, plus a `channel` for the `Stub` to call over the network.
 Both sides always build from the **same** `.proto` (via the git submodule) —
-that's exactly why the CI infrastructure in [CI/CD flow](/en/ci-flow)
+that's exactly why the CI infrastructure in [CI/CD flow](/ci-flow)
 exists: to make sure every consumer regenerates its code the moment the
 `.proto` changes, so client and server never drift apart on the contract.
 

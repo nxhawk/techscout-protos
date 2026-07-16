@@ -40,7 +40,7 @@ The default `GITHUB_TOKEN` cannot dispatch to other repositories.
 
 ## Docs site
 
-`docs/` is a VitePress site (Vietnamese by default at `/`, English at `/en/`)
+`docs/` is a VitePress site (English by default at `/`, Vietnamese at `/vi/`)
 deployed to GitHub Pages by `.github/workflows/docs.yml`. That workflow is
 scoped to `paths: docs/**`, and `ci.yml` / `dispatch-on-change.yml` are scoped
 to proto-related paths — so editing docs only rebuilds the Pages site and

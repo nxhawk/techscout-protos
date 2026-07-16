@@ -68,7 +68,7 @@ Once merged:
    submodule — unless you want to test manually (`workflow_dispatch` on the
    service's `proto-sync.yml`, or a local `git submodule update --remote`).
 
-See [CI/CD flow in detail](/en/ci-flow) for the full breakdown.
+See [CI/CD flow in detail](/ci-flow) for the full breakdown.
 
 ## Adding a brand-new proto
 
@@ -209,4 +209,4 @@ If you only edit content under `docs/` (including this page), you don't need
 to do anything about lint/breaking/dispatch — `docs.yml` will rebuild and
 redeploy the site, while `ci.yml` and `dispatch-on-change.yml` skip that
 commit entirely (see the table at the end of
-[CI/CD flow](/en/ci-flow#summary-table)).
+[CI/CD flow](/ci-flow#summary-table)).
